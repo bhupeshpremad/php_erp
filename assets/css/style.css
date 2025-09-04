@@ -1,0 +1,61 @@
+#accordionSidebar .nav-link.collapsed, #accordionSidebar .nav-link{
+    padding: .4rem 1rem !important;
+}
+
+.sidebar.sidebar-dark.accordion{
+    transition: all 0.3s ease-in-out;
+}
+
+#country, #state {
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+/* Leads table header */
+.table thead th.bg-gradient-primary {
+    background: linear-gradient(45deg, #4e73df, #224abe);
+    color: white !important;
+    text-align: center !important;
+    font-size: 0.9rem;
+}
+
+/* Table font size */
+.table tbody td {
+    font-size: 0.85rem;
+    vertical-align: middle;
+}
+
+/* Buttons with icons inline */
+.btn.btn-primary, .btn.btn-secondary, .btn.btn-success, .btn.btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 5px;
+    font-size: 0.85rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Modal form 3 inputs per row */
+#editLeadForm .form-row {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+#editLeadForm .form-group {
+    flex: 0 0 32%;
+}
+
+/* Adjust modal input font size */
+#editLeadForm .form-control {
+    font-size: 0.9rem;
+}
+
+
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none !important; 
+}
+
+/*  */
