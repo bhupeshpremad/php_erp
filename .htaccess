@@ -1,0 +1,42 @@
+RewriteEngine On
+
+# Exclude assets, vendor, and js folders from rewrite rules to prevent 404 errors
+RewriteCond %{REQUEST_URI} !^/assets/
+RewriteCond %{REQUEST_URI} !^/vendor/
+RewriteCond %{REQUEST_URI} !^/js/
+
+# Redirect root to index.php
+RewriteRule ^$ index.php [L]
+
+# Remove .php extension from URLs (only if .php file exists)
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}\.php -f
+RewriteRule ^([^\.]+)$ $1.php [L]
+
+# Dash/underscore variants for dashboards
+RewriteRule ^superadmin/?$ superadmin/superadmin_dashboard.php [L]
+RewriteRule ^super-admin/?$ superadmin/superadmin_dashboard.php [L]
+
+RewriteRule ^salesadmin/?$ salesadmin/salesadmin_dashboard.php [L]
+RewriteRule ^sales-admin/?$ salesadmin/salesadmin_dashboard.php [L]
+
+RewriteRule ^accounts/?$ accounts/accounts_dashboard.php [L]
+RewriteRule ^account/?$ accounts/accounts_dashboard.php [L]
+RewriteRule ^accounts-admin/?$ accounts/accounts_dashboard.php [L]
+
+# Dashboard explicit URLs
+RewriteRule ^superadmin/dashboard/?$ superadmin/superadmin_dashboard.php [L]
+RewriteRule ^salesadmin/dashboard/?$ salesadmin/salesadmin_dashboard.php [L]
+RewriteRule ^accounts/dashboard/?$ accounts/accounts_dashboard.php [L]
+
+# Sidebar explicit URLs
+RewriteRule ^superadmin/sidebar/?$ superadmin/sidebar.php [L]
+RewriteRule ^salesadmin/sidebar/?$ salesadmin/sidebar.php [L]
+RewriteRule ^accounts/sidebar/?$ accounts/sidebar.php [L]
+
+# Login redirect
+RewriteRule ^login/?$ index.php [L]
+
+# Deny direct access to include folder for security
+RewriteRule ^include/ - [F,L]
+

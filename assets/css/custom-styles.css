@@ -1,0 +1,44 @@
+/* Custom styles for PHP ERP */
+
+/* Notification dropdown improvements */
+.dropdown-list {
+    max-height: 350px; /* Limit height to prevent excessive length */
+    overflow-y: auto;  /* Enable scrolling for many notifications */
+    width: 320px;      /* Adjust width if needed */
+}
+
+.dropdown-list .dropdown-header {
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fc; /* Match topbar background or adjust */
+    z-index: 1;
+    border-bottom: 1px solid #eaecf4;
+}
+
+/* Highlight unread notifications */
+.dropdown-item.bg-light {
+    background-color: #f0f8ff !important; /* Lighter blue for unread */
+    border-left: 3px solid #4e73df; /* Primary color border for unread */
+}
+
+.dropdown-item.bg-light:hover {
+    background-color: #e2f2ff !important; /* Slightly darker on hover */
+}
+
+/* Adjust icon circle for better centering */
+.icon-circle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.5rem; /* Adjust as needed */
+    width: 2.5rem;  /* Adjust as needed */
+    border-radius: 100%;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 576px) {
+    .dropdown-list {
+        width: 100%; /* Full width on small screens */
+        max-width: none;
+    }
+}

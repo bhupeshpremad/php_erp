@@ -1,0 +1,9 @@
+{
+    "require": {
+        "phpoffice/phpspreadsheet": "1.23",
+        "mpdf/mpdf": "^8.2"
+    },
+    "require-dev": {
+        "robmorgan/phinx": "^0.11.7"
+    }
+}
