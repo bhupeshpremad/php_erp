@@ -47,9 +47,9 @@ if (!class_exists('AppConfig')) {
                 // Live/Production configuration
                 return [
                     'host' => $_ENV['DB_HOST_LIVE'] ?? 'localhost',
-                    'db' => $_ENV['DB_NAME_LIVE'] ?? 'u404997496_crm_purewood',
-                    'user' => $_ENV['DB_USER_LIVE'] ?? 'u404997496_crn_purewood',
-                    'pass' => $_ENV['DB_PASS_LIVE'] ?? 'Purewood@2025#', // Consider using a placeholder and instructing user to set in .env
+                    'db' => $_ENV['DB_NAME_LIVE'] ?? 'u404997496_erp_u404997496',
+                    'user' => $_ENV['DB_USER_LIVE'] ?? 'u404997496_erp_u404997496',
+                    'pass' => $_ENV['DB_PASS_LIVE'] ?? 'Purewood@2025#',
                     'charset' => $_ENV['DB_CHARSET_LIVE'] ?? 'utf8mb4',
                     'base_url' => $_ENV['BASE_URL_LIVE'] ?? 'https://crm.purewood.in/',
                     'subdirectory' => ''
