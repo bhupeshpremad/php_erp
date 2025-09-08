@@ -46,11 +46,20 @@ if ($search_son !== '') {
     $params[':sell_order_number'] = '%' . $search_son . '%';
 }
 
+// Check if created_by column exists
+$has_created_by = false;
+try {
+    $stmt_check = $conn->query("SHOW COLUMNS FROM purchase_main LIKE 'created_by'");
+    $has_created_by = $stmt_check->rowCount() > 0;
+} catch (Exception $e) {
+    $has_created_by = false;
+}
+
 // Get current user ID for filtering
 $current_user_id = $_SESSION['user_id'] ?? $_SESSION['admin_id'] ?? null;
 
-// Add user filter to WHERE clauses (superadmin can see all records)
-if ($current_user_id && $_SESSION['user_type'] !== 'superadmin') {
+// Add user filter to WHERE clauses (only if column exists and not superadmin)
+if ($has_created_by && $current_user_id && $_SESSION['user_type'] !== 'superadmin') {
     $whereClauses[] = 'p.created_by = :created_by';
     $params[':created_by'] = $current_user_id;
 }
@@ -60,8 +69,13 @@ if (count($whereClauses) > 0) {
     $whereSql = 'WHERE ' . implode(' AND ', $whereClauses);
 }
 
-// Main data query
-$sql = "SELECT p.id, p.po_number, p.jci_number, p.sell_order_number, p.approval_status, p.created_by 
+// Main data query - include created_by only if column exists
+$select_fields = "p.id, p.po_number, p.jci_number, p.sell_order_number, p.approval_status";
+if ($has_created_by) {
+    $select_fields .= ", p.created_by";
+}
+
+$sql = "SELECT $select_fields 
         FROM purchase_main p 
         $whereSql 
         ORDER BY p.id DESC";
@@ -129,7 +143,10 @@ $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             echo "<td><button class='btn btn-info btn-sm view-details-btn' data-id='{$purchase_id}'>View Details</button></td>";
                             
                             echo "<td>";
-                            echo "<a href='add.php?id={$purchase_id}' class='btn btn-primary btn-sm'>Edit</a>";
+                            // Both superadmin and accountsadmin can edit
+                            if ($user_type === 'superadmin' || $user_type === 'accountsadmin') {
+                                echo "<a href='add.php?id={$purchase_id}' class='btn btn-primary btn-sm'>Edit</a>";
+                            }
 
                             if ($user_type === 'accountsadmin') {
                                 echo " <button class='btn btn-warning btn-sm send-approval-btn' data-id='{$purchase_id}'>Send Approval</button>";

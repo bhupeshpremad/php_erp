@@ -40,8 +40,8 @@ if (!class_exists('AppConfig')) {
                     'user' => $_ENV['DB_USER_LOCAL'] ?? 'root',
                     'pass' => $_ENV['DB_PASS_LOCAL'] ?? '',
                     'charset' => $_ENV['DB_CHARSET_LOCAL'] ?? 'utf8mb4',
-                    'base_url' => $_ENV['BASE_URL_LOCAL'] ?? 'http://localhost/Comparing/php_erp3/',
-                    'subdirectory' => 'php_erp3'
+                    'base_url' => $_ENV['BASE_URL_LOCAL'] ?? 'http://localhost/php_erp/',
+                    'subdirectory' => 'php_erp'
                 ];
             } else {
                 // Live/Production configuration

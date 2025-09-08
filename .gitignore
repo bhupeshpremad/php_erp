@@ -1,85 +1,29 @@
-# Uploaded Files and Images
-/assets/images/upload/
-/modules/*/uploads/
-/modules/quotation/uploads/
-/modules/purchase/uploads/
-/modules/po/uploads/
-/modules/bom/uploads/
-/superadmin/*/uploads/
-/uploads/
-*.jpg
-*.jpeg
-*.png
-*.gif
-*.pdf
-*.xlsx
-*.xls
-*.csv
-*.doc
-*.docx
+# Ignore configuration files with sensitive data
+config/config.php
 
-# Configuration Files (sensitive)
-.env
-.env.local
-
-# Database Files
-*.db
-*.sqlite
-
-# Migration files should be tracked
-!/migrations/*.sql
-
-# Log Files
+# Ignore uploaded files and user data
+uploads/
+assets/images/upload/
+modules/*/uploads/
 *.log
-/logs/
-debug.log
-error.log
 
-# Temporary Files
-/tmp/
-/temp/
+# Ignore temporary files
 *.tmp
 *.temp
+.DS_Store
+Thumbs.db
 
-# Cache Files
-/cache/
-*.cache
-
-# Session Files
-/sessions/
-sess_*
-
-# Backup Files
-*.bak
-*.backup
-*~
-
-# IDE Files
+# Ignore IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
-# OS Files
-.DS_Store
-Thumbs.db
-desktop.ini
+# Ignore database dumps (optional - uncomment if needed)
+# *.sql
 
-# Composer (if used)
-/vendor/
-composer.lock
+# Ignore vendor directory if using Composer
+vendor/
 
-# Node modules (if used)
+# Ignore node_modules if using npm
 node_modules/
-package-lock.json
-
-# Build files
-/build/
-/dist/
-
-# User specific files
-*.user
-*.suo
-*.userosscache
-*.sln.docstates
