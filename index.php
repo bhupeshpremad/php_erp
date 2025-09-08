@@ -22,6 +22,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: ' . BASE_URL . 'superadmin/superadmin_dashboard.php');
             exit();
         } else {
+            // Check static communication admin login
+            if ($email === 'communicationadmin' && $password === 'Admin@123') {
+                $_SESSION['user_type'] = 'communicationadmin';
+                $_SESSION['user_email'] = $email;
+                $_SESSION['username'] = 'Communication Admin';
+                header('Location: ' . BASE_URL . 'communicationadmin/communication_dashboard.php');
+                exit();
+            }
+            
             // Try department-based login
             $departments = ['sales', 'accounts', 'operation', 'production'];
             $loginSuccess = false;
@@ -38,14 +47,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'sales' => 'salesadmin/salesadmin_dashboard.php',
                         'accounts' => 'accountsadmin/accounts_dashboard.php', 
                         'operation' => 'operationadmin/operation_dashboard.php',
-                        'production' => 'productionadmin/production_dashboard.php',
-                        'communication' => 'communicationadmin/communication_dashboard.php'
+                        'production' => 'productionadmin/production_dashboard.php'
                     ];
                     
                     $dashboard = $dashboards[$dept] ?? 'modules/lead/index.php';
                     header('Location: ' . BASE_URL . $dashboard);
                     exit();
-                    break; // Exit the loop after successful login and redirect
+                    break;
                 }
             }
             

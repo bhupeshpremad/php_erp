@@ -19,14 +19,15 @@
 *.docx
 
 # Configuration Files (sensitive)
-/config/config.php
 .env
 .env.local
 
 # Database Files
-*.sql
 *.db
 *.sqlite
+
+# Migration files should be tracked
+!/migrations/*.sql
 
 # Log Files
 *.log
