@@ -11,8 +11,12 @@ include_once ROOT_DIR_PATH . 'include/inc/header.php';
 
 $user_type = $_SESSION['user_type'] ?? 'guest';
 
-// The sidebar is now included conditionally in header.php
-// include_once ROOT_DIR_PATH . 'accountsadmin/sidebar.php'; // THIS LINE IS NOW REMOVED
+// Include appropriate sidebar based on user type
+if ($user_type === 'superadmin') {
+    include_once ROOT_DIR_PATH . 'superadmin/sidebar.php';
+} elseif ($user_type === 'accountsadmin') {
+    include_once ROOT_DIR_PATH . 'accountsadmin/sidebar.php';
+}
 
 // Check if user is logged in as accountsadmin or superadmin
 if (!isset($_SESSION['user_type']) || ($_SESSION['user_type'] !== 'accountsadmin' && $_SESSION['user_type'] !== 'superadmin')) {
