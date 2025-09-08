@@ -33,9 +33,17 @@ $purchase_items = [];
 if ($purchase_id) {
     $edit_mode = true;
     try {
-        // Fetch purchase main data
-        $stmt = $conn->prepare("SELECT * FROM purchase_main WHERE id = ?");
-        $stmt->execute([$purchase_id]);
+        // Get current user ID for filtering
+        $current_user_id = $_SESSION['user_id'] ?? $_SESSION['admin_id'] ?? null;
+        
+        // Fetch purchase main data with user filtering (superadmin can edit all)
+        if ($_SESSION['user_type'] === 'superadmin') {
+            $stmt = $conn->prepare("SELECT * FROM purchase_main WHERE id = ?");
+            $stmt->execute([$purchase_id]);
+        } else {
+            $stmt = $conn->prepare("SELECT * FROM purchase_main WHERE id = ? AND created_by = ?");
+            $stmt->execute([$purchase_id, $current_user_id]);
+        }
         $purchase_data = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($purchase_data) {
@@ -833,6 +841,10 @@ function saveItems(rowToSave) {
     formData.append('bom_number', bom_number);
     formData.append('is_superadmin', isSuperAdmin);
     formData.append('items_json', JSON.stringify(items_to_save)); // Send items as a JSON string
+    
+    // Add debug info
+    console.log('Saving items:', items_to_save);
+    console.log('Form data prepared for:', jci_number);
 
     // Append file inputs to FormData
     var rowsToProcess = rowToSave ? rowToSave : $('#bomTableContainer table tbody tr');

@@ -46,13 +46,22 @@ if ($search_son !== '') {
     $params[':sell_order_number'] = '%' . $search_son . '%';
 }
 
+// Get current user ID for filtering
+$current_user_id = $_SESSION['user_id'] ?? $_SESSION['admin_id'] ?? null;
+
+// Add user filter to WHERE clauses (superadmin can see all records)
+if ($current_user_id && $_SESSION['user_type'] !== 'superadmin') {
+    $whereClauses[] = 'p.created_by = :created_by';
+    $params[':created_by'] = $current_user_id;
+}
+
 $whereSql = '';
 if (count($whereClauses) > 0) {
     $whereSql = 'WHERE ' . implode(' AND ', $whereClauses);
 }
 
 // Main data query
-$sql = "SELECT p.id, p.po_number, p.jci_number, p.sell_order_number, p.approval_status 
+$sql = "SELECT p.id, p.po_number, p.jci_number, p.sell_order_number, p.approval_status, p.created_by 
         FROM purchase_main p 
         $whereSql 
         ORDER BY p.id DESC";

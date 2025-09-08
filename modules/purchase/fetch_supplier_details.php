@@ -1,4 +1,5 @@
 <?php
+session_start();
 include_once __DIR__ . '/../../config/config.php';
 global $conn;
 
@@ -9,8 +10,19 @@ if (!isset($_POST['purchase_id'])) {
 
 $purchase_id = intval($_POST['purchase_id']);
 $user_type = $_POST['user_type'] ?? 'guest';
+$current_user_id = $_SESSION['user_id'] ?? $_SESSION['admin_id'] ?? null;
 
 try {
+    // First check if user has access to this purchase
+    if ($_SESSION['user_type'] !== 'superadmin') {
+        $stmt_check = $conn->prepare("SELECT id FROM purchase_main WHERE id = ? AND created_by = ?");
+        $stmt_check->execute([$purchase_id, $current_user_id]);
+        if (!$stmt_check->fetch()) {
+            echo '<div class="alert alert-danger">Access denied. You can only view your own purchases.</div>';
+            exit;
+        }
+    }
+    
     // Fetch purchase items grouped by supplier
     $stmt_items = $conn->prepare("SELECT supplier_name, product_type, product_name, assigned_quantity, price, total, invoice_image, builty_image, invoice_number FROM purchase_items WHERE purchase_main_id = ? ORDER BY supplier_name, id ASC");
     $stmt_items->execute([$purchase_id]);
@@ -76,8 +88,8 @@ try {
                                             <td><?php echo htmlspecialchars($item['total']); ?></td>
                                             <td>
                                                 <?php if ($has_invoice): ?>
-                                                    <a href="<?php echo BASE_URL; ?>uploads/invoice/<?php echo rawurlencode($item['invoice_image']); ?>" target="_blank">
-                                                        <img src="<?php echo BASE_URL; ?>uploads/invoice/<?php echo rawurlencode($item['invoice_image']); ?>" style="width:50px;height:50px;object-fit:cover;border:1px solid #ddd;border-radius:4px;" />
+                                                    <a href="<?php echo BASE_URL; ?>modules/purchase/uploads/invoice/<?php echo rawurlencode($item['invoice_image']); ?>" target="_blank">
+                                                        <img src="<?php echo BASE_URL; ?>modules/purchase/uploads/invoice/<?php echo rawurlencode($item['invoice_image']); ?>" style="width:50px;height:50px;object-fit:cover;border:1px solid #ddd;border-radius:4px;" />
                                                     </a>
                                                 <?php else: ?>
                                                     <span class="text-muted">No image</span>
@@ -85,8 +97,8 @@ try {
                                             </td>
                                             <td>
                                                 <?php if ($has_builty): ?>
-                                                    <a href="<?php echo BASE_URL; ?>uploads/builty/<?php echo rawurlencode($item['builty_image']); ?>" target="_blank">
-                                                        <img src="<?php echo BASE_URL; ?>uploads/builty/<?php echo rawurlencode($item['builty_image']); ?>" style="width:50px;height:50px;object-fit:cover;border:1px solid #ddd;border-radius:4px;" />
+                                                    <a href="<?php echo BASE_URL; ?>modules/purchase/uploads/Builty/<?php echo rawurlencode($item['builty_image']); ?>" target="_blank">
+                                                        <img src="<?php echo BASE_URL; ?>modules/purchase/uploads/Builty/<?php echo rawurlencode($item['builty_image']); ?>" style="width:50px;height:50px;object-fit:cover;border:1px solid #ddd;border-radius:4px;" />
                                                     </a>
                                                 <?php else: ?>
                                                     <span class="text-muted">No image</span>

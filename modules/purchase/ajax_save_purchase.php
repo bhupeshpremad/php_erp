@@ -1,4 +1,5 @@
 <?php
+session_start();
 include_once __DIR__ . '/../../config/config.php';
 
 header('Content-Type: application/json');
@@ -47,9 +48,12 @@ try {
         $stmt_delete = $conn->prepare("DELETE FROM purchase_items WHERE purchase_main_id = ? AND (invoice_number IS NULL OR invoice_number = '')");
         $stmt_delete->execute([$purchase_main_id]);
     } else {
+        // Get current user ID
+        $created_by = $_SESSION['user_id'] ?? $_SESSION['admin_id'] ?? 1;
+        
         // Insert new purchase_main
-        $stmt_main = $conn->prepare("INSERT INTO purchase_main (po_number, jci_number, sell_order_number, bom_number, created_at) VALUES (?, ?, ?, ?, NOW())");
-        $stmt_main->execute([$po_number, $jci_number, $sell_order_number, $bom_number]);
+        $stmt_main = $conn->prepare("INSERT INTO purchase_main (po_number, jci_number, sell_order_number, bom_number, created_by, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
+        $stmt_main->execute([$po_number, $jci_number, $sell_order_number, $bom_number, $created_by]);
         $purchase_main_id = $conn->lastInsertId();
     }
 
