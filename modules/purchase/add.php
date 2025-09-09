@@ -968,8 +968,25 @@ $('#bomTableContainer').on('click', '.saveRowBtn', function() {
         checkbox.prop('checked', true);
     }
     
-    // Use dedicated individual row save function
-    saveIndividualRow(row);
+    // Validate required fields before saving
+    var supplierName = row.find('.supplierNameInput').val().trim();
+    var assignedQty = parseFloat(row.find('.assignQuantityInput').val() || 0);
+    
+    if (!supplierName) {
+        toastr.error('Supplier name is required.');
+        row.find('.supplierNameInput').focus();
+        return;
+    }
+    
+    if (assignedQty <= 0) {
+        toastr.error('Assigned quantity must be greater than zero.');
+        row.find('.assignQuantityInput').focus();
+        return;
+    }
+    
+    // Use existing saveItems function with specific row
+    console.log('Saving individual row:', row);
+    saveItems(row);
 });
 
 function saveItems(rowToSave) {
