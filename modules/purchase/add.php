@@ -653,6 +653,8 @@ function createBomTable(categoryName, data, savedItems, jobCardCount) {
 // Function to render BOM tables (moved out of success handler for clarity)
 function renderBomTable(jobCards, bomItemsData, existingItems) {
     $('#bomTableContainer').empty();
+    // Reset used items tracker to prevent duplicate green rows
+    window.usedItemIds = new Set();
     jobCards.forEach(function(jobCard) {
         var table = $('<table class="table table-bordered table-sm mb-4"></table>');
         var thead = $('<thead class="thead-light"></thead>');
@@ -739,6 +741,11 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
                 }
 
                 console.log('Match result:', existingItem ? 'FOUND ID: ' + existingItem.id : 'NOT FOUND');
+                
+                // Mark this item as used if found to prevent duplicate green rows
+                if (existingItem && window.usedItemIds) {
+                    window.usedItemIds.add(existingItem.id);
+                }
             }
             console.log('=== END MATCHING DEBUG ===');
 
@@ -788,9 +795,11 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
             tr.append('<td><input type="number" min="0" max="' + item.quantity + '" step="0.001" class="form-control form-control-sm assignQuantityInput" value="' + assignedQty + '" ' + inputReadonly + '></td>'); // Assign Quantity
             tr.append('<td><input type="text" class="form-control form-control-sm invoiceNumberInput" value="' + invoiceNumber + '" ' + inputReadonly + '></td>'); // Invoice No.
             
+            var baseUrl = window.location.origin + window.location.pathname.replace('/modules/purchase/add.php', '') + '/';
+            
             var invoiceImageTdContent = '<input type="file" class="form-control-file form-control-sm invoiceImageInput" ' + inputDisabled + ' ' + fileInputVisibility + '><input type="hidden" class="existingInvoiceImage" value="' + invoiceImage + '">';
             if (invoiceImage && invoiceImage.trim() !== '') {
-                invoiceImageTdContent += '<br><img src="<?php echo BASE_URL; ?>modules/purchase/uploads/invoice/' + invoiceImage + '?t=' + new Date().getTime() + '" class="invoiceImageThumb" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer; margin-top: 5px;" title="Click to view/change">';
+                invoiceImageTdContent += '<br><img src="' + baseUrl + 'modules/purchase/uploads/invoice/' + invoiceImage + '?t=' + new Date().getTime() + '" class="invoiceImageThumb" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer; margin-top: 5px;" title="Click to view/change">';
             }
             tr.append('<td>' + invoiceImageTdContent + '</td>'); // Invoice Image
 
@@ -798,7 +807,7 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
 
             var builtyImageTdContent = '<input type="file" class="form-control-file form-control-sm builtyImageInput" ' + inputDisabled + ' ' + builtyFileInputVisibility + '><input type="hidden" class="existingBuiltyImage" value="' + builtyImage + '">';
             if (builtyImage && builtyImage.trim() !== '') {
-                builtyImageTdContent += '<br><img src="<?php echo BASE_URL; ?>modules/purchase/uploads/Builty/' + builtyImage + '?t=' + new Date().getTime() + '" class="builtyImageThumb" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer; margin-top: 5px;" title="Click to view/change">';
+                builtyImageTdContent += '<br><img src="' + baseUrl + 'modules/purchase/uploads/Builty/' + builtyImage + '?t=' + new Date().getTime() + '" class="builtyImageThumb" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer; margin-top: 5px;" title="Click to view/change">';
             }
             tr.append('<td>' + builtyImageTdContent + '</td>'); // Builty Image
             
