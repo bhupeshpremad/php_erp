@@ -27,12 +27,12 @@ try {
 
     // Fetch BOM items from all BOM tables by bom_main_id
     $bom_glow_data = [];
-    $stmt_glow = $conn->prepare("SELECT '' as supplier_name, 'Glow' as product_type, glowtype as product_name, quantity, price FROM bom_glow WHERE bom_main_id = ?");
+    $stmt_glow = $conn->prepare("SELECT '' as supplier_name, 'Glow Type' as product_type, glowtype as product_name, quantity, price FROM bom_glow WHERE bom_main_id = ?");
     $stmt_glow->execute([$bom_id]);
     $bom_glow_data = $stmt_glow->fetchAll(PDO::FETCH_ASSOC);
 
     $bom_hardware_data = [];
-    $stmt_hardware = $conn->prepare("SELECT '' as supplier_name, 'Hardware' as product_type, itemname as product_name, quantity, price FROM bom_hardware WHERE bom_main_id = ?");
+    $stmt_hardware = $conn->prepare("SELECT '' as supplier_name, 'Item Name' as product_type, itemname as product_name, quantity, price FROM bom_hardware WHERE bom_main_id = ?");
     $stmt_hardware->execute([$bom_id]);
     $bom_hardware_data = $stmt_hardware->fetchAll(PDO::FETCH_ASSOC);
 
@@ -42,7 +42,7 @@ try {
     $bom_plynydf_data = $stmt_plynydf->fetchAll(PDO::FETCH_ASSOC);
 
     $bom_wood_data = [];
-    $stmt_wood = $conn->prepare("SELECT '' as supplier_name, 'Wood' as product_type, woodtype as product_name, length_ft, width_ft, thickness_inch, quantity, price, cft, total FROM bom_wood WHERE bom_main_id = ?");
+    $stmt_wood = $conn->prepare("SELECT '' as supplier_name, 'Wood Type' as product_type, woodtype as product_name, length_ft, width_ft, thickness_inch, quantity, price, cft, total FROM bom_wood WHERE bom_main_id = ?");
     $stmt_wood->execute([$bom_id]);
     $bom_wood_data = $stmt_wood->fetchAll(PDO::FETCH_ASSOC);
 
