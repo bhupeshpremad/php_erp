@@ -924,9 +924,26 @@ function saveItems(rowToSave) {
                 return false;
             }
             
+            // Get unique ID from existing purchase item if available
+            var uniqueId = null;
+            if (existing_invoice_image || existing_builty_image || invoice_number) {
+                // This row has existing data, try to find its ID
+                var existingItems = <?php echo json_encode($purchase_items ?? []); ?>;
+                var matchingItem = existingItems.find(function(item) {
+                    return item.job_card_number === job_card_number_from_table &&
+                           item.product_type === product_type &&
+                           item.product_name === product_name &&
+                           item.supplier_name === supplier_name;
+                });
+                if (matchingItem) {
+                    uniqueId = matchingItem.id;
+                }
+            }
+            
             // Collect items data as an array of objects
             items_to_save.push({
                 rowIndex: rowIndex, // Add rowIndex for file association
+                uniqueId: uniqueId, // Add unique ID for precise row identification
                 supplier_name: supplier_name,
                 product_type: product_type,
                 product_name: product_name,

@@ -122,22 +122,14 @@ try {
             }
         }
         
-        // Check if item already exists with precise matching
-        if (!empty($supplier_name)) {
-            // For items with supplier, match by supplier + product + price + quantity
-            $stmt_precise = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ? AND price = ? AND assigned_quantity = ?");
-            $stmt_precise->execute([
-                $purchase_main_id,
-                $supplier_name,
-                $product_type,
-                $product_name,
-                $job_card_number,
-                $price,
-                $assigned_quantity
-            ]);
-            $existing_item = $stmt_precise->fetch(PDO::FETCH_ASSOC);
+        // Check if item already exists - use unique ID if provided, otherwise use basic matching
+        if (!empty($unique_id)) {
+            // Use unique ID for precise row identification
+            $stmt_unique = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND id = ?");
+            $stmt_unique->execute([$purchase_main_id, $unique_id]);
+            $existing_item = $stmt_unique->fetch(PDO::FETCH_ASSOC);
         } else {
-            // For items without supplier, use original matching
+            // Fallback to basic matching for new items
             $stmt_check_item->execute([
                 $purchase_main_id,
                 $supplier_name,
