@@ -223,6 +223,8 @@ function attachUltimateEventHandlers() {
                 success: function(response) {
                     if (response.success) {
                         toastr.success('Deleted!');
+                        // Clear the used items tracker and reload
+                        window.PURCHASE_MODULE.usedItems.clear();
                         $('#jci_number_search').trigger('change');
                     } else {
                         toastr.error(response.error);
@@ -248,12 +250,37 @@ function escapeHtml(text) {
     return String(text || '').replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 
+// Function to refresh purchase data after save
+function refreshPurchaseData() {
+    var jciNumber = $('#jci_number').val();
+    if (!jciNumber) return;
+    
+    $.ajax({
+        url: 'ajax_fetch_saved_purchase.php',
+        method: 'POST',
+        data: { jci_number: jciNumber },
+        dataType: 'json',
+        success: function(purchaseData) {
+            if (purchaseData.has_purchase && purchaseData.purchase_items) {
+                window.existingPurchaseItems = purchaseData.purchase_items;
+                console.log('Refreshed existingPurchaseItems:', window.existingPurchaseItems);
+            }
+        },
+        error: function() {
+            console.log('Error refreshing purchase data');
+        }
+    });
+}
+
 // Initialize on document ready
 $(document).ready(function() {
     if (!window.PURCHASE_MODULE.initialized) {
         // Override all render functions
         window.renderBomTable = ultimateRenderBomTable;
         window.renderEnhancedBomTable = ultimateRenderBomTable;
+        
+        // Add global refresh function
+        window.refreshPurchaseData = refreshPurchaseData;
         
         window.PURCHASE_MODULE.initialized = true;
         console.log('ULTIMATE FIX initialized successfully');
