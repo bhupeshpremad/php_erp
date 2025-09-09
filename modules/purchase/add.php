@@ -207,6 +207,7 @@ try {
 <script src="simple_fix.js?v=<?php echo time(); ?>"></script>
 <script src="debug_fix.js?v=<?php echo time(); ?>"></script>
 <script src="final_fix.js?v=<?php echo time(); ?>"></script>
+<script src="direct_fix.js?v=<?php echo time(); ?>"></script>
 
 <script>
 // Force cache refresh - Version: <?php echo date('Y-m-d H:i:s'); ?>
