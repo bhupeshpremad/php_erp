@@ -196,8 +196,13 @@ try {
 <!-- Purchase Editable JS -->
 <script src="js/purchase-editable.js"></script>
 <script src="js/fix-duplicate-display.js"></script>
+<script src="fix_individual_save.js"></script>
 
 <script>
+// Global variables for individual row save
+window.isSuperAdmin = <?php echo json_encode($is_superadmin); ?>;
+window.existingPurchaseItems = <?php echo json_encode($purchase_items ?? []); ?>;
+
 $(document).ready(function() {
 $('#jci_number_search').on('change', function() {
     var selectedJciNumber = $(this).val();
@@ -770,33 +775,13 @@ $('#bomTableContainer').on('click', '.saveRowBtn', function() {
     var row = $(this).closest('tr');
     var checkbox = row.find('.rowCheckbox');
     
-    // Strict validation: This specific row must be checked
+    // Auto-check this row if not checked
     if (!checkbox.is(':checked')) {
-        toastr.warning('Please check this row before saving.');
-        checkbox.focus();
-        return;
+        checkbox.prop('checked', true);
     }
     
-    // Temporarily uncheck all other rows to ensure only this row is processed
-    var allCheckboxes = $('#bomTableContainer .rowCheckbox');
-    var otherCheckboxes = allCheckboxes.not(checkbox);
-    var otherStates = [];
-    
-    // Store other checkbox states
-    otherCheckboxes.each(function(index) {
-        otherStates[index] = $(this).is(':checked');
-        $(this).prop('checked', false);
-    });
-    
-    // Save only this row
-    saveItems(row);
-    
-    // Restore other checkbox states after a short delay
-    setTimeout(function() {
-        otherCheckboxes.each(function(index) {
-            $(this).prop('checked', otherStates[index]);
-        });
-    }, 100);
+    // Use dedicated individual row save function
+    saveIndividualRow(row);
 });
 
 function saveItems(rowToSave) {
