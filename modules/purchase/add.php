@@ -195,6 +195,7 @@ try {
 
 <!-- Purchase Editable JS -->
 <script src="js/purchase-editable.js"></script>
+<script src="js/fix-duplicate-display.js"></script>
 
 <script>
 $(document).ready(function() {
@@ -637,19 +638,49 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
                     var pItemProductType = (pItem.product_type !== undefined && pItem.product_type !== null) ? String(pItem.product_type).trim() : '';
                     var itemProductType = (item.product_type !== undefined && item.product_type !== null) ? String(item.product_type).trim() : '';
 
-                    return pItemProductType === itemProductType && 
-                           (pItemProductName === itemProductName || (itemProductName === '' && pItemProductName === itemProductType)) &&
-                           pItem.job_card_number === jobCard;
+                    // Enhanced matching to avoid duplicate invoice/builty display
+                    var typeMatch = pItemProductType === itemProductType;
+                    var nameMatch = (pItemProductName === itemProductName || (itemProductName === '' && pItemProductName === itemProductType));
+                    var jobCardMatch = pItem.job_card_number === jobCard;
+                    
+                    // For Wood items, also match quantity and price to ensure unique mapping
+                    if (itemProductType === 'Wood' && typeMatch && nameMatch && jobCardMatch) {
+                        var quantityMatch = Math.abs(parseFloat(pItem.assigned_quantity || 0) - parseFloat(item.quantity || 0)) < 0.001;
+                        var priceMatch = Math.abs(parseFloat(pItem.price || 0) - parseFloat(item.price || 0)) < 0.01;
+                        return quantityMatch && priceMatch;
+                    }
+                    
+                    return typeMatch && nameMatch && jobCardMatch;
                 });
             }
 
             var supplierName = existingItem ? (existingItem.supplier_name || '').toString().replace(/"/g, '&quot;') : '';
             var assignedQty = existingItem ? existingItem.assigned_quantity : '0';
             var isChecked = existingItem ? true : false;
-            var invoiceNumber = existingItem ? (existingItem.invoice_number || '').toString().trim() : '';
-            var builtyNumber = existingItem ? (existingItem.builty_number || '').toString().trim() : '';
-            var invoiceImage = existingItem ? (existingItem.invoice_image || '').toString().trim() : '';
-            var builtyImage = existingItem ? (existingItem.builty_image || '').toString().trim() : '';
+            
+            // Only show invoice/builty data if this is the exact matching item
+            var invoiceNumber = '';
+            var builtyNumber = '';
+            var invoiceImage = '';
+            var builtyImage = '';
+            
+            if (existingItem) {
+                // Check if this is a unique match (not shared invoice/builty)
+                var sameInvoiceItems = existingItems.filter(function(pItem) {
+                    return pItem.invoice_number === existingItem.invoice_number && 
+                           pItem.invoice_number !== '' && 
+                           pItem.job_card_number === jobCard;
+                });
+                
+                // Only show invoice/builty if this is the first occurrence or unique
+                if (sameInvoiceItems.length === 1 || sameInvoiceItems[0].id === existingItem.id) {
+                    invoiceNumber = (existingItem.invoice_number || '').toString().trim();
+                    builtyNumber = (existingItem.builty_number || '').toString().trim();
+                    invoiceImage = (existingItem.invoice_image || '').toString().trim();
+                    builtyImage = (existingItem.builty_image || '').toString().trim();
+                }
+            }
+            
             var isApproved = existingItem && invoiceNumber && invoiceImage ? true : false;
             var isSuperAdmin = <?php echo json_encode($is_superadmin); ?>;
 
