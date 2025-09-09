@@ -33,10 +33,35 @@ $purchase_items = [];
 if ($purchase_id) {
     $edit_mode = true;
     try {
-        // Fetch purchase main data
-        $stmt = $conn->prepare("SELECT * FROM purchase_main WHERE id = ?");
-        $stmt->execute([$purchase_id]);
+        // Check if created_by column exists
+        $has_created_by = false;
+        try {
+            $stmt_check = $conn->query("SHOW COLUMNS FROM purchase_main LIKE 'created_by'");
+            $has_created_by = $stmt_check->rowCount() > 0;
+        } catch (Exception $e) {
+            $has_created_by = false;
+        }
+        
+        // Get current user ID for filtering
+        $current_user_id = $_SESSION['user_id'] ?? $_SESSION['admin_id'] ?? null;
+        
+        // Fetch purchase main data with user filtering (superadmin can edit all)
+        if (!$has_created_by || $_SESSION['user_type'] === 'superadmin') {
+            // Superadmin can edit all purchases, or if created_by column doesn't exist
+            $stmt = $conn->prepare("SELECT * FROM purchase_main WHERE id = ?");
+            $stmt->execute([$purchase_id]);
+        } else {
+            // Regular users can only edit their own purchases
+            $stmt = $conn->prepare("SELECT * FROM purchase_main WHERE id = ? AND created_by = ?");
+            $stmt->execute([$purchase_id, $current_user_id]);
+        }
+        
         $purchase_data = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$purchase_data) {
+            echo "<div class='alert alert-danger'>Purchase record not found or you don't have permission to edit this record.</div>";
+            exit();
+        }
         
         if ($purchase_data) {
             // Fetch purchase items
@@ -81,7 +106,12 @@ try {
 
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-            <h6 class="m-0 font-weight-bold text-primary"><?php echo $edit_mode ? 'Edit Purchase Details' : 'Add Purchase Details'; ?></h6>
+            <h6 class="m-0 font-weight-bold text-primary">
+                <?php echo $edit_mode ? 'Edit Purchase Details' : 'Add Purchase Details'; ?>
+                <?php if ($edit_mode && $is_superadmin): ?>
+                    <small class="text-success ml-2">(Super Admin - Full Edit Access)</small>
+                <?php endif; ?>
+            </h6>
         </div>
         <div class="card-body">
             <form id="purchaseDetailsForm">
@@ -165,6 +195,7 @@ try {
 
 <!-- Purchase Editable JS -->
 <script src="js/purchase-editable.js"></script>
+<script src="js/fix-duplicate-display.js"></script>
 
 <script>
 $(document).ready(function() {
@@ -607,19 +638,49 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
                     var pItemProductType = (pItem.product_type !== undefined && pItem.product_type !== null) ? String(pItem.product_type).trim() : '';
                     var itemProductType = (item.product_type !== undefined && item.product_type !== null) ? String(item.product_type).trim() : '';
 
-                    return pItemProductType === itemProductType && 
-                           (pItemProductName === itemProductName || (itemProductName === '' && pItemProductName === itemProductType)) &&
-                           pItem.job_card_number === jobCard;
+                    // Enhanced matching to avoid duplicate invoice/builty display
+                    var typeMatch = pItemProductType === itemProductType;
+                    var nameMatch = (pItemProductName === itemProductName || (itemProductName === '' && pItemProductName === itemProductType));
+                    var jobCardMatch = pItem.job_card_number === jobCard;
+                    
+                    // For Wood items, also match quantity and price to ensure unique mapping
+                    if (itemProductType === 'Wood' && typeMatch && nameMatch && jobCardMatch) {
+                        var quantityMatch = Math.abs(parseFloat(pItem.assigned_quantity || 0) - parseFloat(item.quantity || 0)) < 0.001;
+                        var priceMatch = Math.abs(parseFloat(pItem.price || 0) - parseFloat(item.price || 0)) < 0.01;
+                        return quantityMatch && priceMatch;
+                    }
+                    
+                    return typeMatch && nameMatch && jobCardMatch;
                 });
             }
 
             var supplierName = existingItem ? (existingItem.supplier_name || '').toString().replace(/"/g, '&quot;') : '';
             var assignedQty = existingItem ? existingItem.assigned_quantity : '0';
             var isChecked = existingItem ? true : false;
-            var invoiceNumber = existingItem ? (existingItem.invoice_number || '').toString().trim() : '';
-            var builtyNumber = existingItem ? (existingItem.builty_number || '').toString().trim() : '';
-            var invoiceImage = existingItem ? (existingItem.invoice_image || '').toString().trim() : '';
-            var builtyImage = existingItem ? (existingItem.builty_image || '').toString().trim() : '';
+            
+            // Only show invoice/builty data if this is the exact matching item
+            var invoiceNumber = '';
+            var builtyNumber = '';
+            var invoiceImage = '';
+            var builtyImage = '';
+            
+            if (existingItem) {
+                // Check if this is a unique match (not shared invoice/builty)
+                var sameInvoiceItems = existingItems.filter(function(pItem) {
+                    return pItem.invoice_number === existingItem.invoice_number && 
+                           pItem.invoice_number !== '' && 
+                           pItem.job_card_number === jobCard;
+                });
+                
+                // Only show invoice/builty if this is the first occurrence or unique
+                if (sameInvoiceItems.length === 1 || sameInvoiceItems[0].id === existingItem.id) {
+                    invoiceNumber = (existingItem.invoice_number || '').toString().trim();
+                    builtyNumber = (existingItem.builty_number || '').toString().trim();
+                    invoiceImage = (existingItem.invoice_image || '').toString().trim();
+                    builtyImage = (existingItem.builty_image || '').toString().trim();
+                }
+            }
+            
             var isApproved = existingItem && invoiceNumber && invoiceImage ? true : false;
             var isSuperAdmin = <?php echo json_encode($is_superadmin); ?>;
 
@@ -707,7 +768,35 @@ $('#purchaseDetailsForm').on('submit', function(e) {
 
 $('#bomTableContainer').on('click', '.saveRowBtn', function() {
     var row = $(this).closest('tr');
+    var checkbox = row.find('.rowCheckbox');
+    
+    // Strict validation: This specific row must be checked
+    if (!checkbox.is(':checked')) {
+        toastr.warning('Please check this row before saving.');
+        checkbox.focus();
+        return;
+    }
+    
+    // Temporarily uncheck all other rows to ensure only this row is processed
+    var allCheckboxes = $('#bomTableContainer .rowCheckbox');
+    var otherCheckboxes = allCheckboxes.not(checkbox);
+    var otherStates = [];
+    
+    // Store other checkbox states
+    otherCheckboxes.each(function(index) {
+        otherStates[index] = $(this).is(':checked');
+        $(this).prop('checked', false);
+    });
+    
+    // Save only this row
     saveItems(row);
+    
+    // Restore other checkbox states after a short delay
+    setTimeout(function() {
+        otherCheckboxes.each(function(index) {
+            $(this).prop('checked', otherStates[index]);
+        });
+    }, 100);
 });
 
 function saveItems(rowToSave) {
@@ -730,8 +819,22 @@ function saveItems(rowToSave) {
 
         rows.each(function(rowIndex) {
             var row = $(this);
-            if (!row.find('.rowCheckbox').is(':checked') && !rowToSave) {
-                return true; // continue to next row if not checked and not saving a single row
+            
+            // For single row save, ONLY process the exact clicked row
+            if (rowToSave) {
+                if (row[0] !== rowToSave[0]) {
+                    return true; // Skip all other rows completely
+                }
+                // Double check: this specific row MUST be checked
+                if (!row.find('.rowCheckbox').is(':checked')) {
+                    console.log('Row save cancelled - checkbox not checked');
+                    return false; // Stop processing if not checked
+                }
+            } else {
+                // For bulk save, check if row is checked
+                if (!row.find('.rowCheckbox').is(':checked')) {
+                    return true; // continue to next row if not checked
+                }
             }
 
             var supplier_name_input = row.find('.supplierNameInput');
@@ -769,23 +872,46 @@ function saveItems(rowToSave) {
 
             // console.log(`Row ${rowIndex} - supplier_name: '${supplier_name}', product_type: '${product_type}', product_name: '${product_name}', assigned_quantity: '${assigned_quantity}', invoice_number: '${invoice_number}', builty_number: '${builty_number}'`);
 
-            // Validation for supplier and assigned quantity
-            if ((isNaN(parseFloat(assigned_quantity)) || parseFloat(assigned_quantity) < 0) && supplier_name !== '') {
-                toastr.error('Assigned quantity must be zero or a positive number for all items with supplier name.');
-                row.find('.assignQuantityInput').focus();
-                validationFailed = true;
-                return false;
-            }
-            if (supplier_name.trim() === '' && parseFloat(assigned_quantity) > 0) {
-                toastr.error('Supplier name is required if assigned quantity is greater than zero.');
-                row.find('.supplierNameInput').focus();
-                validationFailed = true;
-                return false;
+            // Enhanced validation for individual row save
+            if (rowToSave) {
+                // For individual row save, both supplier name and assigned quantity are required
+                if (supplier_name.trim() === '') {
+                    toastr.error('Supplier name is required.');
+                    row.find('.supplierNameInput').focus();
+                    validationFailed = true;
+                    return false;
+                }
+                if (isNaN(parseFloat(assigned_quantity)) || parseFloat(assigned_quantity) <= 0) {
+                    toastr.error('Assigned quantity must be greater than zero.');
+                    row.find('.assignQuantityInput').focus();
+                    validationFailed = true;
+                    return false;
+                }
+            } else {
+                // For bulk save, original validation
+                if ((isNaN(parseFloat(assigned_quantity)) || parseFloat(assigned_quantity) < 0) && supplier_name !== '') {
+                    toastr.error('Assigned quantity must be zero or a positive number for all items with supplier name.');
+                    row.find('.assignQuantityInput').focus();
+                    validationFailed = true;
+                    return false;
+                }
+                if (supplier_name.trim() === '' && parseFloat(assigned_quantity) > 0) {
+                    toastr.error('Supplier name is required if assigned quantity is greater than zero.');
+                    row.find('.supplierNameInput').focus();
+                    validationFailed = true;
+                    return false;
+                }
             }
             if (!product_type || !product_name) {
                 toastr.error('Product type and product name are required.');
                 validationFailed = true;
                 return false;
+            }
+            
+            // Skip empty rows (no supplier name and no assigned quantity)
+            if (supplier_name.trim() === '' && (isNaN(parseFloat(assigned_quantity)) || parseFloat(assigned_quantity) <= 0)) {
+                console.log('Skipping empty row:', product_name);
+                return true; // Skip this row
             }
 
             var bomQuantity = parseFloat(row.find('.bomQuantityInput').val()) || 0;
@@ -822,7 +948,11 @@ function saveItems(rowToSave) {
     }
 
     if (items_to_save.length === 0) {
-        toastr.warning('Please select at least one item and enter assigned quantity.');
+        if (rowToSave) {
+            toastr.warning('Please fill supplier name and assigned quantity for this row.');
+        } else {
+            toastr.warning('Please select at least one item and enter assigned quantity.');
+        }
         return;
     }
 
@@ -833,6 +963,14 @@ function saveItems(rowToSave) {
     formData.append('bom_number', bom_number);
     formData.append('is_superadmin', isSuperAdmin);
     formData.append('items_json', JSON.stringify(items_to_save)); // Send items as a JSON string
+    
+    // Add debug info
+    console.log('Saving items:', items_to_save);
+    console.log('Form data prepared for:', jci_number);
+    console.log('Row-specific save:', rowToSave ? 'Yes' : 'No');
+    if (rowToSave) {
+        console.log('Target row checkbox checked:', rowToSave.find('.rowCheckbox').is(':checked'));
+    }
 
     // Append file inputs to FormData
     var rowsToProcess = rowToSave ? rowToSave : $('#bomTableContainer table tbody tr');

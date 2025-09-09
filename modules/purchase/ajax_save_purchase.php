@@ -1,4 +1,5 @@
 <?php
+session_start();
 include_once __DIR__ . '/../../config/config.php';
 
 header('Content-Type: application/json');
@@ -47,9 +48,26 @@ try {
         $stmt_delete = $conn->prepare("DELETE FROM purchase_items WHERE purchase_main_id = ? AND (invoice_number IS NULL OR invoice_number = '')");
         $stmt_delete->execute([$purchase_main_id]);
     } else {
-        // Insert new purchase_main
-        $stmt_main = $conn->prepare("INSERT INTO purchase_main (po_number, jci_number, sell_order_number, bom_number, created_at) VALUES (?, ?, ?, ?, NOW())");
-        $stmt_main->execute([$po_number, $jci_number, $sell_order_number, $bom_number]);
+        // Check if created_by column exists
+        $has_created_by = false;
+        try {
+            $stmt_check = $conn->query("SHOW COLUMNS FROM purchase_main LIKE 'created_by'");
+            $has_created_by = $stmt_check->rowCount() > 0;
+        } catch (Exception $e) {
+            $has_created_by = false;
+        }
+        
+        if ($has_created_by) {
+            // Get current user ID
+            $created_by = $_SESSION['user_id'] ?? $_SESSION['admin_id'] ?? 1;
+            // Insert new purchase_main with created_by
+            $stmt_main = $conn->prepare("INSERT INTO purchase_main (po_number, jci_number, sell_order_number, bom_number, created_by, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
+            $stmt_main->execute([$po_number, $jci_number, $sell_order_number, $bom_number, $created_by]);
+        } else {
+            // Insert new purchase_main without created_by
+            $stmt_main = $conn->prepare("INSERT INTO purchase_main (po_number, jci_number, sell_order_number, bom_number, created_at) VALUES (?, ?, ?, ?, NOW())");
+            $stmt_main->execute([$po_number, $jci_number, $sell_order_number, $bom_number]);
+        }
         $purchase_main_id = $conn->lastInsertId();
     }
 
@@ -70,9 +88,11 @@ try {
         $assigned_quantity = floatval($item_data['assigned_quantity'] ?? 0);
         $price = floatval($item_data['price'] ?? 0);
         $total = $assigned_quantity * $price;
-        $date = $item_data['date'] ?? null; // Assuming date can be passed from frontend
+        $date = $item_data['date'] ?? null;
         $invoice_number = $item_data['invoice_number'] ?? null;
         $builty_number = $item_data['builty_number'] ?? null;
+        $bom_quantity = floatval($item_data['bom_quantity'] ?? 0);
+        $unique_id = $item_data['uniqueId'] ?? null;
 
         $existing_invoice_image = $item_data['existing_invoice_image'] ?? null;
         $existing_builty_image = $item_data['existing_builty_image'] ?? null;
@@ -102,15 +122,31 @@ try {
             }
         }
         
-        // Check if item already exists for update or insert
-        $stmt_check_item->execute([
-            $purchase_main_id,
-            $supplier_name,
-            $product_type,
-            $product_name,
-            $job_card_number
-        ]);
-        $existing_item = $stmt_check_item->fetch(PDO::FETCH_ASSOC);
+        // Check if item already exists with precise matching
+        if (!empty($supplier_name)) {
+            // For items with supplier, match by supplier + product + price + quantity
+            $stmt_precise = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ? AND price = ? AND assigned_quantity = ?");
+            $stmt_precise->execute([
+                $purchase_main_id,
+                $supplier_name,
+                $product_type,
+                $product_name,
+                $job_card_number,
+                $price,
+                $assigned_quantity
+            ]);
+            $existing_item = $stmt_precise->fetch(PDO::FETCH_ASSOC);
+        } else {
+            // For items without supplier, use original matching
+            $stmt_check_item->execute([
+                $purchase_main_id,
+                $supplier_name,
+                $product_type,
+                $product_name,
+                $job_card_number
+            ]);
+            $existing_item = $stmt_check_item->fetch(PDO::FETCH_ASSOC);
+        }
 
         if ($existing_item) {
             if ($is_superadmin) {

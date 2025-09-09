@@ -1,56 +1,50 @@
 <?php
-require_once 'config/config.php';
+session_start();
+include_once __DIR__ . '/config/config.php';
 
-echo "<h2>Purchase Module Debug</h2>";
+global $conn;
 
-try {
-    // Check if purchase_main table exists
-    $stmt = $conn->query("SHOW TABLES LIKE 'purchase_main'");
-    $table_exists = $stmt->rowCount() > 0;
+$purchase_id = 7;
+
+echo "<h2>Debug Purchase ID: $purchase_id</h2>";
+
+// Check purchase_main table
+$stmt = $conn->prepare("SELECT * FROM purchase_main WHERE id = ?");
+$stmt->execute([$purchase_id]);
+$purchase_data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+echo "<h3>Purchase Main Data:</h3>";
+if ($purchase_data) {
+    echo "<pre>" . print_r($purchase_data, true) . "</pre>";
+} else {
+    echo "<p>No purchase found with ID $purchase_id</p>";
+}
+
+// Check purchase_items table
+$stmt_items = $conn->prepare("SELECT * FROM purchase_items WHERE purchase_main_id = ?");
+$stmt_items->execute([$purchase_id]);
+$purchase_items = $stmt_items->fetchAll(PDO::FETCH_ASSOC);
+
+echo "<h3>Purchase Items Data:</h3>";
+if ($purchase_items) {
+    echo "<pre>" . print_r($purchase_items, true) . "</pre>";
+} else {
+    echo "<p>No purchase items found for purchase ID $purchase_id</p>";
+}
+
+// Check if JCI exists
+if ($purchase_data && !empty($purchase_data['jci_number'])) {
+    $jci_number = $purchase_data['jci_number'];
+    echo "<h3>JCI Check for: $jci_number</h3>";
     
-    if ($table_exists) {
-        echo "✅ purchase_main table exists<br>";
-        
-        // Check table structure
-        $stmt = $conn->query("DESCRIBE purchase_main");
-        $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        echo "<strong>Table Structure:</strong><br>";
-        foreach($columns as $col) {
-            echo "- " . $col['Field'] . " (" . $col['Type'] . ")<br>";
-        }
-        
-        // Check data count
-        $stmt = $conn->query("SELECT COUNT(*) as count FROM purchase_main");
-        $count = $stmt->fetch()['count'];
-        echo "<br><strong>Records count:</strong> " . $count . "<br>";
-        
-        if ($count > 0) {
-            // Show sample data
-            $stmt = $conn->query("SELECT * FROM purchase_main LIMIT 3");
-            $samples = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            echo "<br><strong>Sample Data:</strong><br>";
-            foreach($samples as $row) {
-                echo "ID: " . $row['id'] . ", PO: " . ($row['po_number'] ?? 'NULL') . "<br>";
-            }
-        }
-        
+    $stmt_jci = $conn->prepare("SELECT * FROM jci_main WHERE jci_number = ?");
+    $stmt_jci->execute([$jci_number]);
+    $jci_data = $stmt_jci->fetch(PDO::FETCH_ASSOC);
+    
+    if ($jci_data) {
+        echo "<pre>" . print_r($jci_data, true) . "</pre>";
     } else {
-        echo "❌ purchase_main table does NOT exist<br>";
-        echo "<strong>Available tables:</strong><br>";
-        
-        $stmt = $conn->query("SHOW TABLES");
-        $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
-        
-        foreach($tables as $table) {
-            if (strpos($table, 'purchase') !== false) {
-                echo "- " . $table . " (purchase related)<br>";
-            }
-        }
+        echo "<p>No JCI found with number $jci_number</p>";
     }
-    
-} catch(Exception $e) {
-    echo "❌ Error: " . $e->getMessage();
 }
 ?>
