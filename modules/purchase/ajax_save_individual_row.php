@@ -1,6 +1,27 @@
 <?php
 session_start();
-include_once __DIR__ . '/../../config/config.php';
+
+// Try multiple config paths
+$config_paths = [
+    __DIR__ . '/../../config/config.php',
+    dirname(__DIR__, 2) . '/config/config.php',
+    $_SERVER['DOCUMENT_ROOT'] . '/config/config.php'
+];
+
+$config_loaded = false;
+foreach ($config_paths as $path) {
+    if (file_exists($path)) {
+        include_once $path;
+        $config_loaded = true;
+        break;
+    }
+}
+
+if (!$config_loaded) {
+    echo json_encode(['success' => false, 'error' => 'Config file not found']);
+    exit;
+}
+
 include_once __DIR__ . '/audit_log.php';
 
 header('Content-Type: application/json');
@@ -25,7 +46,16 @@ if (!$po_number || !$jci_number || !$sell_order_number || !$bom_number || empty(
     exit;
 }
 
-global $conn;
+// Use global connection if available, otherwise create new
+if (!isset($conn)) {
+    $host = 'localhost';
+    $dbname = 'u404997496_erp';
+    $username = 'u404997496_erp_u404997496';
+    $password = 'PUrewood@2025#';
+    
+    $conn = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+}
 
 // Define upload directories
 $invoice_upload_dir = ROOT_DIR_PATH . 'modules/purchase/uploads/invoice/';
