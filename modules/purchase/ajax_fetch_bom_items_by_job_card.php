@@ -42,7 +42,7 @@ try {
     $bom_plynydf_data = $stmt_plynydf->fetchAll(PDO::FETCH_ASSOC);
 
     $bom_wood_data = [];
-    $stmt_wood = $conn->prepare("SELECT '' as supplier_name, 'Wood Type' as product_type, woodtype as product_name, length_ft, width_ft, thickness_inch, quantity, price, cft, total FROM bom_wood WHERE bom_main_id = ?");
+    $stmt_wood = $conn->prepare("SELECT '' as supplier_name, 'Wood' as product_type, woodtype as product_name, length_ft, width_ft, thickness_inch, quantity, price, cft, total FROM bom_wood WHERE bom_main_id = ?");
     $stmt_wood->execute([$bom_id]);
     $bom_wood_data = $stmt_wood->fetchAll(PDO::FETCH_ASSOC);
 
