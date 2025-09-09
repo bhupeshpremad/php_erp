@@ -730,10 +730,26 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
             var actionTd = '<td>';
             actionTd += '<button type="button" class="btn btn-primary btn-sm saveRowBtn" ' + inputDisabled + '>Save</button>';
             
+            // DEBUG: Console logs to check delete button logic
+            console.log('=== DELETE BUTTON DEBUG ===');
+            console.log('supplierName:', supplierName);
+            console.log('supplierName exists:', !!supplierName);
+            console.log('supplierName.trim():', supplierName ? supplierName.trim() : 'null');
+            console.log('condition result:', supplierName && supplierName.trim() !== '');
+            console.log('item.product_name:', item.product_name);
+            console.log('jobCard:', jobCard);
+            
             // Add delete button for superadmin on saved rows (force show for testing)
             if (supplierName && supplierName.trim() !== '') {
+                console.log('ADDING DELETE BUTTON!');
                 actionTd += ' <button type="button" class="btn btn-danger btn-sm deleteRowBtn" data-supplier="' + supplierName + '" data-product="' + item.product_name + '" data-job-card="' + jobCard + '">Del</button>';
+            } else {
+                console.log('DELETE BUTTON NOT ADDED - condition failed');
             }
+            
+            console.log('Final actionTd HTML:', actionTd);
+            console.log('=== END DEBUG ===');
+            
             actionTd += '</td>';
             tr.append(actionTd);
 
