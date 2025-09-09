@@ -21,17 +21,28 @@ function saveIndividualRow(targetRow) {
     var existing_invoice_image = targetRow.find('.existingInvoiceImage').val() || '';
     var existing_builty_image = targetRow.find('.existingBuiltyImage').val() || '';
 
-    // Validation
+    // Enhanced validation with inline error highlights
+    var hasError = false;
+    
     if (supplier_name === '') {
+        targetRow.find('.supplierNameInput').addClass('is-invalid');
         toastr.error('Supplier name is required.');
         targetRow.find('.supplierNameInput').focus();
-        return;
+        hasError = true;
+    } else {
+        targetRow.find('.supplierNameInput').removeClass('is-invalid');
     }
+    
     if (isNaN(parseFloat(assigned_quantity)) || parseFloat(assigned_quantity) <= 0) {
+        targetRow.find('.assignQuantityInput').addClass('is-invalid');
         toastr.error('Assigned quantity must be greater than zero.');
         targetRow.find('.assignQuantityInput').focus();
-        return;
+        hasError = true;
+    } else {
+        targetRow.find('.assignQuantityInput').removeClass('is-invalid');
     }
+    
+    if (hasError) return;
 
     // Find unique ID for this specific row
     var uniqueId = null;
@@ -53,6 +64,11 @@ function saveIndividualRow(targetRow) {
     var bom_quantity = targetRow.find('.bomQuantityInput').val() || '0';
     var row_serial = targetRow.find('td').eq(1).text().trim();
     
+    console.log('Individual save - BOM quantity:', bom_quantity);
+    console.log('Individual save - Row serial:', row_serial);
+    console.log('Individual save - Assigned quantity:', assigned_quantity);
+    console.log('Individual save - Price:', price);
+    
     // Create single item array with unique row identification
     var items_to_save = [{
         rowIndex: 0, // Single row index
@@ -65,6 +81,7 @@ function saveIndividualRow(targetRow) {
         price: price,
         bom_quantity: bom_quantity, // Add BOM quantity for precise matching
         row_serial: row_serial, // Add row serial for identification
+        date: new Date().toISOString().split('T')[0] // Add current date
         total: (parseFloat(assigned_quantity) * parseFloat(price)).toFixed(2),
         invoice_number: invoice_number,
         builty_number: builty_number,
@@ -73,6 +90,10 @@ function saveIndividualRow(targetRow) {
     }];
     
     console.log('Individual save data:', items_to_save[0]);
+    console.log('FormData contents:');
+    for (var pair of formData.entries()) {
+        console.log(pair[0] + ': ' + pair[1]);
+    }
 
     // Prepare FormData
     var formData = new FormData();
@@ -96,9 +117,13 @@ function saveIndividualRow(targetRow) {
 
     console.log('Saving individual row:', items_to_save[0]);
 
-    // AJAX call
+    // Disable save button to prevent duplicate submissions
+    var saveBtn = targetRow.find('.saveRowBtn');
+    saveBtn.prop('disabled', true).text('Saving...');
+    
+    // Use dedicated individual save endpoint
     $.ajax({
-        url: 'ajax_save_purchase.php',
+        url: 'ajax_save_individual_row.php',
         method: 'POST',
         data: formData,
         processData: false,
@@ -107,13 +132,20 @@ function saveIndividualRow(targetRow) {
         success: function(response) {
             if (response.success) {
                 toastr.success('Row saved successfully!');
+                // Update row UI without full reload
+                targetRow.addClass('table-success');
+                targetRow.find('.badge').removeClass('badge-warning').addClass('badge-success').text('Saved');
                 $('#jci_number_search').trigger('change'); // Reload table
             } else {
                 toastr.error(response.error || 'Save failed');
             }
         },
         error: function(xhr, status, error) {
-            toastr.error('AJAX error: ' + error);
+            toastr.error('Save failed: ' + error);
+        },
+        complete: function() {
+            // Re-enable save button
+            saveBtn.prop('disabled', false).text('Save');
         }
     });
 }
