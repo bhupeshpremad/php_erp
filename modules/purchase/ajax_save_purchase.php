@@ -123,16 +123,22 @@ try {
             }
         }
         
+        // Debug logging
+        error_log("Processing item: supplier={$supplier_name}, product={$product_name}, job_card={$job_card_number}, assigned_qty={$assigned_quantity}, price={$price}, bom_qty={$bom_quantity}, unique_id={$unique_id}");
+        
         // Check if item already exists - use unique ID if provided, otherwise use precise matching
         if (!empty($unique_id)) {
             // Use unique ID for precise row identification
             $stmt_unique = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND id = ?");
             $stmt_unique->execute([$purchase_main_id, $unique_id]);
             $existing_item = $stmt_unique->fetch(PDO::FETCH_ASSOC);
+            error_log("Unique ID match result: " . ($existing_item ? "Found ID {$existing_item['id']}" : "Not found"));
         } else {
             // For individual saves, use BOM quantity + other fields for precise matching
             $bom_quantity = floatval($item_data['bom_quantity'] ?? 0);
             $row_serial = $item_data['row_serial'] ?? null;
+            
+            error_log("BOM quantity matching: bom_qty={$bom_quantity}, row_serial={$row_serial}");
             
             if ($bom_quantity > 0) {
                 // Use BOM quantity for precise row identification
@@ -148,6 +154,7 @@ try {
                     $assigned_quantity
                 ]);
                 $existing_item = $stmt_bom_match->fetch(PDO::FETCH_ASSOC);
+                error_log("BOM match result: " . ($existing_item ? "Found ID {$existing_item['id']}" : "Not found"));
             } else {
                 // Fallback to basic matching
                 $stmt_check_item->execute([
@@ -155,13 +162,17 @@ try {
                     $supplier_name,
                     $product_type,
                     $product_name,
-                    $job_card_number
+                    $job_card_number,
+                    $assigned_quantity,
+                    $price
                 ]);
                 $existing_item = $stmt_check_item->fetch(PDO::FETCH_ASSOC);
+                error_log("Basic match result: " . ($existing_item ? "Found ID {$existing_item['id']}" : "Not found"));
             }
         }
 
         if ($existing_item) {
+            error_log("Updating existing item ID: {$existing_item['id']}");
             if ($is_superadmin) {
                 // Superadmin can update all fields
                 $stmt_update_item_superadmin->execute([
@@ -176,6 +187,7 @@ try {
                     $builty_image_name,
                     $existing_item['id']
                 ]);
+                error_log("Superadmin update completed for ID: {$existing_item['id']}");
             } else {
                 // Regular user: Update if not approved, otherwise only images if changed
                 if (empty($existing_item['invoice_number'])) {
@@ -191,14 +203,19 @@ try {
                         $builty_image_name,
                         $existing_item['id']
                     ]);
+                    error_log("Regular user update completed for ID: {$existing_item['id']}");
                 } else {
                     // If approved, update images only if new files are uploaded
                     if ($invoice_image_name !== $existing_item['invoice_image'] || $builty_image_name !== $existing_item['builty_image']) {
                         $stmt_update_image_only->execute([$invoice_image_name, $builty_image_name, $existing_item['id']]);
+                        error_log("Image-only update completed for ID: {$existing_item['id']}");
+                    } else {
+                        error_log("No update needed for approved item ID: {$existing_item['id']}");
                     }
                 }
             }
         } else {
+            error_log("Inserting new item for supplier: {$supplier_name}, product: {$product_name}");
             // Insert new item
             $stmt_insert_item->execute([
                 $purchase_main_id,
@@ -216,6 +233,8 @@ try {
                 $builty_number,
                 $builty_image_name
             ]);
+            $new_id = $conn->lastInsertId();
+            error_log("New item inserted with ID: {$new_id}");
         }
     }
 
@@ -226,6 +245,7 @@ try {
     // Commit transaction
     $conn->commit();
 
+    error_log("Purchase save completed successfully for JCI: {$jci_number}");
     echo json_encode(['success' => true, 'message' => 'Purchase saved successfully']);
     exit;
 

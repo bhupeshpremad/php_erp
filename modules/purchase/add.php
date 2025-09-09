@@ -188,6 +188,12 @@ try {
     }
     .table th, .table td { vertical-align: middle; padding: 0.5rem; }
     .table input.form-control, .table select.form-control { border: 1px solid #ced4da; padding: 0.375rem 0.75rem; height: auto; }
+    .is-invalid { border-color: #dc3545 !important; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .table-success { background-color: #d4edda !important; }
+    .loading-overlay { position: relative; }
+    .loading-overlay::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8); z-index: 10; }
+    .spinner-border-sm { width: 1rem; height: 1rem; }
 </style>
 
 <!-- Select2 JS -->
@@ -196,6 +202,7 @@ try {
 <!-- Purchase Editable JS -->
 <script src="js/purchase-editable.js?v=<?php echo time(); ?>"></script>
 <script src="js/fix-duplicate-display.js?v=<?php echo time(); ?>"></script>
+<script src="js/bulk-operations.js?v=<?php echo time(); ?>"></script>
 <script src="fix_individual_save.js?v=<?php echo time(); ?>"></script>
 
 <script>
