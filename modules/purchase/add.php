@@ -204,6 +204,7 @@ try {
 <script src="js/fix-duplicate-display.js?v=<?php echo time(); ?>"></script>
 <script src="js/bulk-operations.js?v=<?php echo time(); ?>"></script>
 <script src="fix_individual_save.js?v=<?php echo time(); ?>"></script>
+<script src="fix_complete_display.js?v=<?php echo time(); ?>"></script>
 
 <script>
 // Force cache refresh - Version: <?php echo date('Y-m-d H:i:s'); ?>
@@ -339,12 +340,21 @@ $('#jci_number_search').on('change', function() {
                                     console.log('=== END PURCHASE DATA DEBUG ===');
                                     
                                     var existingItems = purchaseData.has_purchase ? purchaseData.purchase_items : [];
-                                    renderBomTable(jobCards, bomItemsData, existingItems);
+                                    // Use enhanced render function
+                                    if (typeof renderEnhancedBomTable === 'function') {
+                                        renderEnhancedBomTable(jobCards, bomItemsData, existingItems);
+                                    } else {
+                                        renderBomTable(jobCards, bomItemsData, existingItems);
+                                    }
                                 },
                                 error: function() {
                                     console.log('Error fetching existing purchase data');
                                     // Fallback: render tables without existing data
-                                    renderBomTable(jobCards, bomItemsData, []);
+                                    if (typeof renderEnhancedBomTable === 'function') {
+                                        renderEnhancedBomTable(jobCards, bomItemsData, []);
+                                    } else {
+                                        renderBomTable(jobCards, bomItemsData, []);
+                                    }
                                 }
                             });
                         } else {
@@ -699,7 +709,7 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
                     var jobCardMatch = pItem.job_card_number === jobCard;
 
                     // For Wood items, match dimensions and quantity/price
-                    if (itemProductType === 'Wood Type' && typeMatch && nameMatch && jobCardMatch) {
+                    if (itemProductType === 'Wood' && typeMatch && nameMatch && jobCardMatch) {
                         var lengthMatch = Math.abs(parseFloat(pItem.length_ft || 0) - parseFloat(item.length_ft || 0)) < 0.01;
                         var widthMatch = Math.abs(parseFloat(pItem.width_ft || 0) - parseFloat(item.width_ft || 0)) < 0.01;
                         var thicknessMatch = Math.abs(parseFloat(pItem.thickness_inch || 0) - parseFloat(item.thickness_inch || 0)) < 0.01;
@@ -709,7 +719,7 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
                     }
 
                     // For non-wood items, match supplier name as well
-                    if (itemProductType !== 'Wood Type' && typeMatch && nameMatch && jobCardMatch) {
+                    if (itemProductType !== 'Wood' && typeMatch && nameMatch && jobCardMatch) {
                         var supplierMatch = pItem.supplier_name === item.supplier_name;
                         return supplierMatch;
                     }
@@ -718,7 +728,7 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
                 });
 
                 // If no exact match found, try supplier-based matching for non-wood items
-                if (!existingItem && item.product_type !== 'Wood Type') {
+                if (!existingItem && item.product_type !== 'Wood') {
                     existingItem = existingItems.find(function(pItem) {
                         return pItem.supplier_name === item.supplier_name &&
                                pItem.product_type === item.product_type &&
@@ -779,18 +789,16 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
             tr.append('<td><input type="text" class="form-control form-control-sm invoiceNumberInput" value="' + invoiceNumber + '" ' + inputReadonly + '></td>'); // Invoice No.
             
             var invoiceImageTdContent = '<input type="file" class="form-control-file form-control-sm invoiceImageInput" ' + inputDisabled + ' ' + fileInputVisibility + '><input type="hidden" class="existingInvoiceImage" value="' + invoiceImage + '">';
-            if (invoiceImage) {
-                var invoiceImageUrl = '<?php echo BASE_URL; ?>modules/purchase/uploads/invoice/' + invoiceImage + '?t=' + new Date().getTime();
-                invoiceImageTdContent += '<img src="' + invoiceImageUrl + '" class="invoiceImageThumb" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer;" onerror="this.style.display=\'none\'" onload="this.style.display=\'inline-block\'">';
+            if (invoiceImage && invoiceImage.trim() !== '') {
+                invoiceImageTdContent += '<br><img src="<?php echo BASE_URL; ?>modules/purchase/uploads/invoice/' + invoiceImage + '?t=' + new Date().getTime() + '" class="invoiceImageThumb" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer; margin-top: 5px;" title="Click to view/change">';
             }
             tr.append('<td>' + invoiceImageTdContent + '</td>'); // Invoice Image
 
             tr.append('<td><input type="text" class="form-control form-control-sm builtyNumberInput" value="' + builtyNumber + '" ' + inputReadonly + '></td>'); // Builty No.
 
             var builtyImageTdContent = '<input type="file" class="form-control-file form-control-sm builtyImageInput" ' + inputDisabled + ' ' + builtyFileInputVisibility + '><input type="hidden" class="existingBuiltyImage" value="' + builtyImage + '">';
-            if (builtyImage) {
-                var builtyImageUrl = '<?php echo BASE_URL; ?>modules/purchase/uploads/Builty/' + builtyImage + '?t=' + new Date().getTime();
-                builtyImageTdContent += '<img src="' + builtyImageUrl + '" class="builtyImageThumb" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer;" onerror="this.style.display=\'none\'" onload="this.style.display=\'inline-block\'">';
+            if (builtyImage && builtyImage.trim() !== '') {
+                builtyImageTdContent += '<br><img src="<?php echo BASE_URL; ?>modules/purchase/uploads/Builty/' + builtyImage + '?t=' + new Date().getTime() + '" class="builtyImageThumb" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer; margin-top: 5px;" title="Click to view/change">';
             }
             tr.append('<td>' + builtyImageTdContent + '</td>'); // Builty Image
             
