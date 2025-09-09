@@ -184,7 +184,8 @@ function renderEnhancedBomTable(jobCards, bomItemsData, existingItems) {
             var invoiceImageTd = '<input type="file" class="form-control-file form-control-sm invoiceImageInput" ' + inputDisabled + '>';
             invoiceImageTd += '<input type="hidden" class="existingInvoiceImage" value="' + invoiceImage + '">';
             if (invoiceImage && invoiceImage.trim() !== '') {
-                invoiceImageTd += '<br><img src="<?php echo BASE_URL; ?>modules/purchase/uploads/invoice/' + invoiceImage + '?t=' + new Date().getTime() + '" class="invoiceImageThumb" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer; margin-top: 5px; border: 1px solid #ddd;" title="Click to view/change">';
+                var baseUrl = window.location.origin + window.location.pathname.replace('/modules/purchase/add.php', '') + '/';
+                invoiceImageTd += '<br><img src="' + baseUrl + 'modules/purchase/uploads/invoice/' + invoiceImage + '?t=' + new Date().getTime() + '" class="invoiceImageThumb" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer; margin-top: 5px; border: 1px solid #ddd;" title="Click to view/change">';
             }
             tr.append('<td>' + invoiceImageTd + '</td>');
             
@@ -194,7 +195,8 @@ function renderEnhancedBomTable(jobCards, bomItemsData, existingItems) {
             var builtyImageTd = '<input type="file" class="form-control-file form-control-sm builtyImageInput" ' + inputDisabled + '>';
             builtyImageTd += '<input type="hidden" class="existingBuiltyImage" value="' + builtyImage + '">';
             if (builtyImage && builtyImage.trim() !== '') {
-                builtyImageTd += '<br><img src="<?php echo BASE_URL; ?>modules/purchase/uploads/Builty/' + builtyImage + '?t=' + new Date().getTime() + '" class="builtyImageThumb" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer; margin-top: 5px; border: 1px solid #ddd;" title="Click to view/change">';
+                var baseUrl = window.location.origin + window.location.pathname.replace('/modules/purchase/add.php', '') + '/';
+                builtyImageTd += '<br><img src="' + baseUrl + 'modules/purchase/uploads/Builty/' + builtyImage + '?t=' + new Date().getTime() + '" class="builtyImageThumb" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer; margin-top: 5px; border: 1px solid #ddd;" title="Click to view/change">';
             }
             tr.append('<td>' + builtyImageTd + '</td>');
             
