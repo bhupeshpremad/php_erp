@@ -725,7 +725,15 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
             } else {
                 tr.append('<td><span class="badge badge-warning">Pending</span></td>'); // Status
             }
-            tr.append('<td><button type="button" class="btn btn-primary btn-sm saveRowBtn" ' + inputDisabled + '>Save</button></td>'); // Action
+            
+            // Action column with Save and Delete buttons
+            var actionTd = '<td>';
+            actionTd += '<button type="button" class="btn btn-primary btn-sm saveRowBtn" ' + inputDisabled + '>Save</button>';
+            if (isSuperAdmin && existingItem && existingItem.id) {
+                actionTd += ' <button type="button" class="btn btn-danger btn-sm deleteRowBtn" data-row-id="' + existingItem.id + '">Delete</button>';
+            }
+            actionTd += '</td>';
+            tr.append(actionTd);
 
             tbody.append(tr);
         });
@@ -762,6 +770,32 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
         var isSuperAdmin = <?php echo json_encode($is_superadmin); ?>;
         if (isSuperAdmin) {
             $(this).siblings('.builtyImageInput').trigger('click');
+        }
+    });
+    
+    // Delete row handler for superadmin
+    $('#bomTableContainer').on('click', '.deleteRowBtn', function() {
+        var rowId = $(this).data('row-id');
+        var row = $(this).closest('tr');
+        
+        if (confirm('Are you sure you want to delete this row? This action cannot be undone.')) {
+            $.ajax({
+                url: 'ajax_delete_row.php',
+                method: 'POST',
+                data: { row_id: rowId },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        toastr.success(response.message);
+                        $('#jci_number_search').trigger('change'); // Reload table
+                    } else {
+                        toastr.error(response.error);
+                    }
+                },
+                error: function() {
+                    toastr.error('Error deleting row');
+                }
+            });
         }
     });
 }
