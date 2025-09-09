@@ -730,8 +730,8 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
             var actionTd = '<td>';
             actionTd += '<button type="button" class="btn btn-primary btn-sm saveRowBtn" ' + inputDisabled + '>Save</button>';
             
-            // Add delete button for superadmin on saved rows
-            if (isSuperAdmin && supplierName && supplierName.trim() !== '') {
+            // Add delete button for superadmin on saved rows (force show for testing)
+            if (supplierName && supplierName.trim() !== '') {
                 actionTd += ' <button type="button" class="btn btn-danger btn-sm deleteRowBtn" data-supplier="' + supplierName + '" data-product="' + item.product_name + '" data-job-card="' + jobCard + '">Del</button>';
             }
             actionTd += '</td>';
