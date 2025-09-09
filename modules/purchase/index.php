@@ -59,7 +59,8 @@ try {
 $current_user_id = $_SESSION['user_id'] ?? $_SESSION['admin_id'] ?? null;
 
 // Add user filter to WHERE clauses (only if column exists and not superadmin)
-if ($has_created_by && $current_user_id && $_SESSION['user_type'] !== 'superadmin') {
+// Modified: Allow accountsadmin to see all purchase records, not just their own
+if ($has_created_by && $current_user_id && $_SESSION['user_type'] !== 'superadmin' && $_SESSION['user_type'] !== 'accountsadmin') {
     $whereClauses[] = 'p.created_by = :created_by';
     $params[':created_by'] = $current_user_id;
 }
@@ -75,10 +76,20 @@ if ($has_created_by) {
     $select_fields .= ", p.created_by";
 }
 
-$sql = "SELECT $select_fields 
-        FROM purchase_main p 
-        $whereSql 
-        ORDER BY p.id DESC";
+// Modified query to handle NULL created_by values for accountsadmin and superadmin
+if ($_SESSION['user_type'] === 'superadmin' || $_SESSION['user_type'] === 'accountsadmin') {
+    // Show all records regardless of created_by value
+    $sql = "SELECT $select_fields 
+            FROM purchase_main p 
+            $whereSql 
+            ORDER BY p.id DESC";
+} else {
+    // For other users, apply the original filtering
+    $sql = "SELECT $select_fields 
+            FROM purchase_main p 
+            $whereSql 
+            ORDER BY p.id DESC";
+}
 
 $stmt = $conn->prepare($sql);
 
