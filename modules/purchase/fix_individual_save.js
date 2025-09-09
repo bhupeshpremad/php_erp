@@ -110,7 +110,7 @@ function saveIndividualRow(targetRow) {
         length_ft: length_ft, // Wood dimensions for precise matching
         width_ft: width_ft,
         thickness_inch: thickness_inch,
-        date: new Date().toISOString().split('T')[0] // Add current date
+        date: new Date().toISOString().split('T')[0], // Add current date
         total: (parseFloat(assigned_quantity) * parseFloat(price)).toFixed(2),
         invoice_number: invoice_number,
         builty_number: builty_number,
@@ -119,10 +119,6 @@ function saveIndividualRow(targetRow) {
     }];
     
     console.log('Individual save data:', items_to_save[0]);
-    console.log('FormData contents:');
-    for (var pair of formData.entries()) {
-        console.log(pair[0] + ': ' + pair[1]);
-    }
 
     // Prepare FormData
     var formData = new FormData();
