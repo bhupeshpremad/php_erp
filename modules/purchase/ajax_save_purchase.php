@@ -77,8 +77,8 @@ try {
     $stmt_insert_item = $conn->prepare("INSERT INTO purchase_items (purchase_main_id, supplier_name, product_type, product_name, job_card_number, assigned_quantity, price, total, date, invoice_number, amount, invoice_image, builty_number, builty_image, length_ft, width_ft, thickness_inch, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
 
     // Define update statements based on superadmin status
-    $stmt_update_item_superadmin = $conn->prepare("UPDATE purchase_items SET assigned_quantity = ?, price = ?, total = ?, date = ?, invoice_number = ?, amount = ?, invoice_image = ?, builty_number = ?, builty_image = ?, length_ft = ?, width_ft = ?, thickness_inch = ?, updated_at = NOW() WHERE id = ?");
-    $stmt_update_item_regular = $conn->prepare("UPDATE purchase_items SET assigned_quantity = ?, price = ?, total = ?, date = ?, invoice_number = ?, amount = ?, invoice_image = ?, builty_number = ?, builty_image = ?, length_ft = ?, width_ft = ?, thickness_inch = ?, updated_at = NOW() WHERE id = ? AND (invoice_number IS NULL OR invoice_number = '')");
+    $stmt_update_item_superadmin = $conn->prepare("UPDATE purchase_items SET assigned_quantity = ?, price = ?, total = ?, date = ?, invoice_number = ?, amount = ?, invoice_image = ?, builty_number = ?, builty_image = ?, length_ft = ?, width_ft = ?, thickness_inch = ?, updated_at = NOW() WHERE id = ? LIMIT 1");
+    $stmt_update_item_regular = $conn->prepare("UPDATE purchase_items SET assigned_quantity = ?, price = ?, total = ?, date = ?, invoice_number = ?, amount = ?, invoice_image = ?, builty_number = ?, builty_image = ?, length_ft = ?, width_ft = ?, thickness_inch = ?, updated_at = NOW() WHERE id = ? AND (invoice_number IS NULL OR invoice_number = '') LIMIT 1");
     $stmt_update_image_only = $conn->prepare("UPDATE purchase_items SET invoice_image = ?, builty_image = ?, updated_at = NOW() WHERE id = ?");
 
     foreach ($items as $item_index => $item_data) {
