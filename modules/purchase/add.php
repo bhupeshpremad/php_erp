@@ -685,21 +685,21 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
             });
             console.log('Job Card:', jobCard);
             console.log('Available existing items:', existingItems.length);
-            
+
             if (existingItems && existingItems.length > 0) {
+                // First, try to find exact match with all criteria
                 existingItem = existingItems.find(function(pItem) {
                     var pItemProductName = (pItem.product_name !== undefined && pItem.product_name !== null) ? String(pItem.product_name).trim() : '';
                     var itemProductName = (item.product_name !== undefined && item.product_name !== null) ? String(item.product_name).trim() : '';
                     var pItemProductType = (pItem.product_type !== undefined && pItem.product_type !== null) ? String(pItem.product_type).trim() : '';
                     var itemProductType = (item.product_type !== undefined && item.product_type !== null) ? String(item.product_type).trim() : '';
 
-                    // Enhanced matching to avoid duplicate invoice/builty display
                     var typeMatch = pItemProductType === itemProductType;
-                    var nameMatch = (pItemProductName === itemProductName || (itemProductName === '' && pItemProductName === itemProductType));
+                    var nameMatch = pItemProductName === itemProductName;
                     var jobCardMatch = pItem.job_card_number === jobCard;
-                    
-                    // For Wood items, also match dimensions to ensure unique mapping
-                    if (itemProductType === 'Wood' && typeMatch && nameMatch && jobCardMatch) {
+
+                    // For Wood items, match dimensions and quantity/price
+                    if (itemProductType === 'Wood Type' && typeMatch && nameMatch && jobCardMatch) {
                         var lengthMatch = Math.abs(parseFloat(pItem.length_ft || 0) - parseFloat(item.length_ft || 0)) < 0.01;
                         var widthMatch = Math.abs(parseFloat(pItem.width_ft || 0) - parseFloat(item.width_ft || 0)) < 0.01;
                         var thicknessMatch = Math.abs(parseFloat(pItem.thickness_inch || 0) - parseFloat(item.thickness_inch || 0)) < 0.01;
@@ -707,20 +707,27 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
                         var priceMatch = Math.abs(parseFloat(pItem.price || 0) - parseFloat(item.price || 0)) < 0.01;
                         return lengthMatch && widthMatch && thicknessMatch && quantityMatch && priceMatch;
                     }
-                    
-                    console.log('Checking match with saved item:', {
-                        id: pItem.id,
-                        product_type: pItemProductType,
-                        product_name: pItemProductName,
-                        job_card: pItem.job_card_number,
-                        typeMatch: typeMatch,
-                        nameMatch: nameMatch,
-                        jobCardMatch: jobCardMatch
-                    });
-                    
-                    return typeMatch && nameMatch && jobCardMatch;
+
+                    // For non-wood items, match supplier name as well
+                    if (itemProductType !== 'Wood Type' && typeMatch && nameMatch && jobCardMatch) {
+                        var supplierMatch = pItem.supplier_name === item.supplier_name;
+                        return supplierMatch;
+                    }
+
+                    return false;
                 });
-                
+
+                // If no exact match found, try supplier-based matching for non-wood items
+                if (!existingItem && item.product_type !== 'Wood Type') {
+                    existingItem = existingItems.find(function(pItem) {
+                        return pItem.supplier_name === item.supplier_name &&
+                               pItem.product_type === item.product_type &&
+                               pItem.product_name === item.product_name &&
+                               pItem.job_card_number === jobCard &&
+                               Math.abs(parseFloat(pItem.assigned_quantity || 0) - parseFloat(item.quantity || 0)) < 0.001;
+                    });
+                }
+
                 console.log('Match result:', existingItem ? 'FOUND ID: ' + existingItem.id : 'NOT FOUND');
             }
             console.log('=== END MATCHING DEBUG ===');
@@ -773,15 +780,17 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
             
             var invoiceImageTdContent = '<input type="file" class="form-control-file form-control-sm invoiceImageInput" ' + inputDisabled + ' ' + fileInputVisibility + '><input type="hidden" class="existingInvoiceImage" value="' + invoiceImage + '">';
             if (invoiceImage) {
-                invoiceImageTdContent += '<img src="<?php echo BASE_URL; ?>modules/purchase/uploads/invoice/' + invoiceImage + '?t=' + new Date().getTime() + '" class="invoiceImageThumb" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer;">';
+                var invoiceImageUrl = '<?php echo BASE_URL; ?>modules/purchase/uploads/invoice/' + invoiceImage + '?t=' + new Date().getTime();
+                invoiceImageTdContent += '<img src="' + invoiceImageUrl + '" class="invoiceImageThumb" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer;" onerror="this.style.display=\'none\'" onload="this.style.display=\'inline-block\'">';
             }
             tr.append('<td>' + invoiceImageTdContent + '</td>'); // Invoice Image
-            
+
             tr.append('<td><input type="text" class="form-control form-control-sm builtyNumberInput" value="' + builtyNumber + '" ' + inputReadonly + '></td>'); // Builty No.
 
             var builtyImageTdContent = '<input type="file" class="form-control-file form-control-sm builtyImageInput" ' + inputDisabled + ' ' + builtyFileInputVisibility + '><input type="hidden" class="existingBuiltyImage" value="' + builtyImage + '">';
             if (builtyImage) {
-                builtyImageTdContent += '<img src="<?php echo BASE_URL; ?>modules/purchase/uploads/Builty/' + builtyImage + '?t=' + new Date().getTime() + '" class="builtyImageThumb" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer;">';
+                var builtyImageUrl = '<?php echo BASE_URL; ?>modules/purchase/uploads/Builty/' + builtyImage + '?t=' + new Date().getTime();
+                builtyImageTdContent += '<img src="' + builtyImageUrl + '" class="builtyImageThumb" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer;" onerror="this.style.display=\'none\'" onload="this.style.display=\'inline-block\'">';
             }
             tr.append('<td>' + builtyImageTdContent + '</td>'); // Builty Image
             
