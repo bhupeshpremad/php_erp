@@ -72,7 +72,7 @@ try {
     }
 
     // Insert/Update purchase_items
-    $stmt_check_item = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ? AND assigned_quantity = ? AND price = ?");
+    $stmt_check_item = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ? AND assigned_quantity = ? AND price = ? AND length_ft = ? AND width_ft = ? AND thickness_inch = ? LIMIT 1");
     $stmt_precise_match = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ? AND assigned_quantity = ? AND price = ? LIMIT 1");
     $stmt_insert_item = $conn->prepare("INSERT INTO purchase_items (purchase_main_id, supplier_name, product_type, product_name, job_card_number, assigned_quantity, price, total, date, invoice_number, amount, invoice_image, builty_number, builty_image, length_ft, width_ft, thickness_inch, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
 
@@ -145,7 +145,7 @@ try {
             
             if ($bom_quantity > 0) {
                 // Use BOM quantity for precise row identification
-                $stmt_bom_match = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ? AND price = ? AND (assigned_quantity = ? OR ABS(assigned_quantity - ?) < 0.001) LIMIT 1");
+                $stmt_bom_match = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ? AND price = ? AND (assigned_quantity = ? OR ABS(assigned_quantity - ?) < 0.001) AND length_ft = ? AND width_ft = ? AND thickness_inch = ? LIMIT 1");
                 $stmt_bom_match->execute([
                     $purchase_main_id,
                     $supplier_name,
@@ -154,7 +154,10 @@ try {
                     $job_card_number,
                     $price,
                     $assigned_quantity,
-                    $assigned_quantity
+                    $assigned_quantity,
+                    $length_ft,
+                    $width_ft,
+                    $thickness_inch
                 ]);
                 $existing_item = $stmt_bom_match->fetch(PDO::FETCH_ASSOC);
                 error_log("BOM match result: " . ($existing_item ? "Found ID {$existing_item['id']}" : "Not found"));
@@ -167,7 +170,10 @@ try {
                     $product_name,
                     $job_card_number,
                     $assigned_quantity,
-                    $price
+                    $price,
+                    $length_ft,
+                    $width_ft,
+                    $thickness_inch
                 ]);
                 $existing_item = $stmt_check_item->fetch(PDO::FETCH_ASSOC);
                 error_log("Basic match result: " . ($existing_item ? "Found ID {$existing_item['id']}" : "Not found"));
