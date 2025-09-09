@@ -202,8 +202,6 @@ try {
 <!-- Purchase Editable JS -->
 <script src="js/purchase-editable.js?v=<?php echo time(); ?>"></script>
 <script src="js/bulk-operations.js?v=<?php echo time(); ?>"></script>
-<script src="fix_individual_save.js?v=<?php echo time(); ?>"></script>
-<script src="working_fix.js?v=<?php echo time(); ?>"></script>
 
 <script>
 // Force cache refresh - Version: <?php echo date('Y-m-d H:i:s'); ?>
@@ -541,14 +539,49 @@ function createBomTable(categoryName, data, savedItems, jobCardCount) {
                 savedItems.some(function(savedItem) {
                     var match = false;
                     console.log("Matching savedItem:", savedItem, "with row_data:", row_data, "category:", categoryName);
-                    if (categoryName.includes('Glow') && savedItem.product_type === 'Glow Type' && savedItem.product_name === row_data.glowtype && savedItem.supplier_name === row_data.supplier_name) {
-                        match = true;
-                    } else if (categoryName.includes('Hardware') && savedItem.product_type === 'Item Name' && savedItem.product_name === row_data.itemname && savedItem.supplier_name === row_data.supplier_name) {
-                        match = true;
-                    } else if (categoryName.includes('Plynydf') && savedItem.product_type === 'Plynydf' && savedItem.supplier_name === row_data.supplier_name && parseFloat(savedItem.assigned_quantity) === parseFloat(row_data.quantity) && parseFloat(savedItem.price) === parseFloat(row_data.price)) {
-                        match = true;
-                    } else if (categoryName.includes('Wood') && savedItem.product_type === 'Wood Type' && savedItem.product_name === row_data.woodtype && savedItem.supplier_name === row_data.supplier_name) {
-                        match = true;
+
+                    var savedType = (savedItem.product_type || '').toString().trim();
+                    var savedName = (savedItem.product_name || '').toString().trim();
+                    var savedJobCard = (savedItem.job_card_number || '').toString().trim();
+                    var bomGlow = (row_data.glowtype || '').toString().trim();
+                    var bomItemName = (row_data.itemname || '').toString().trim();
+                    var bomWood = (row_data.woodtype || row_data.product_name || '').toString().trim();
+
+                    // Normalize product type for wood
+                    var isWoodSaved = savedType.toLowerCase().includes('wood');
+                    var isWoodBom = categoryName.toLowerCase().includes('wood');
+
+                    // Always require job card to match (we render per job card)
+                    var jobCardMatches = (savedJobCard === jobCard);
+
+                    if (!jobCardMatches) {
+                        return false;
+                    }
+
+                    if (categoryName.includes('Glow')) {
+                        // Match by type+name; do NOT require supplier to match for prefill
+                        match = (savedType === 'Glow' || savedType === 'Glow Type') && (savedName === bomGlow);
+                    } else if (categoryName.includes('Hardware')) {
+                        match = (savedType === 'Hardware' || savedType === 'Item Name') && (savedName === bomItemName);
+                    } else if (categoryName.includes('Plynydf')) {
+                        // For Plynydf, match on type and approximate quantity/price; supplier can differ
+                        var qtyClose = Math.abs(parseFloat(savedItem.assigned_quantity || 0) - parseFloat(row_data.quantity || 0)) < 0.001;
+                        var priceClose = Math.abs(parseFloat(savedItem.price || 0) - parseFloat(row_data.price || 0)) < 0.01;
+                        match = (savedType === 'Plynydf') && qtyClose && priceClose;
+                    } else if (isWoodBom) {
+                        // Wood: accept 'Wood' or 'Wood Type'; match by product name (woodtype) and optionally dimensions
+                        var nameMatch = savedName === bomWood;
+                        var lengthMatch = true, widthMatch = true, thickMatch = true;
+                        if (typeof row_data.length_ft !== 'undefined') {
+                            lengthMatch = Math.abs(parseFloat(savedItem.length_ft || 0) - parseFloat(row_data.length_ft || 0)) < 0.01;
+                        }
+                        if (typeof row_data.width_ft !== 'undefined') {
+                            widthMatch = Math.abs(parseFloat(savedItem.width_ft || 0) - parseFloat(row_data.width_ft || 0)) < 0.01;
+                        }
+                        if (typeof row_data.thickness_inch !== 'undefined') {
+                            thickMatch = Math.abs(parseFloat(savedItem.thickness_inch || 0) - parseFloat(row_data.thickness_inch || 0)) < 0.01;
+                        }
+                        match = isWoodSaved && nameMatch && lengthMatch && widthMatch && thickMatch;
                     }
 
                     if (match) {
@@ -561,8 +594,8 @@ function createBomTable(categoryName, data, savedItems, jobCardCount) {
 
             if (matchedSavedItem) {
                 checkboxTd.find('.rowCheckbox').prop('checked', true);
-                // Do not disable checkbox to allow user to uncheck if needed
-                // checkboxTd.find('.rowCheckbox').prop('disabled', true);
+                // Prefill supplier and quantities from saved item
+                tr.find('.supplierNameInput').val(matchedSavedItem.supplier_name || '');
                 tr.find('.jobCardSelect').val(matchedSavedItem.job_card_number).prop('disabled', true);
                 tr.find('.assignedQtyInput').val(matchedSavedItem.assigned_quantity).prop('readonly', true);
 
