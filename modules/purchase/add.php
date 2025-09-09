@@ -299,6 +299,9 @@ $('#jci_number_search').on('change', function() {
                     success: function(bomItemsData) {
                         console.log('BOM Items Data:', bomItemsData);
                         if (bomItemsData && bomItemsData.length > 0) {
+                            // Store BOM data globally for individual save function
+                            window.currentBomData = bomItemsData;
+                            
                             toastr.info('BOM items found: ' + bomItemsData.length);
                             // Clear previous BOM tables
                             $('#bomTableContainer').empty();

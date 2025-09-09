@@ -64,10 +64,36 @@ function saveIndividualRow(targetRow) {
     var bom_quantity = targetRow.find('.bomQuantityInput').val() || '0';
     var row_serial = targetRow.find('td').eq(1).text().trim();
     
+    // Get Wood dimensions if product type is Wood
+    var length_ft = '0';
+    var width_ft = '0';
+    var thickness_inch = '0';
+    
+    if (product_type === 'Wood') {
+        // Extract dimensions from BOM data based on row position
+        var rowIndex = targetRow.index();
+        var bomData = window.currentBomData || [];
+        
+        // Find matching BOM item by row index or product details
+        var matchingBomItem = bomData.find(function(item) {
+            return item.product_type === 'Wood' && 
+                   item.product_name === product_name &&
+                   Math.abs(parseFloat(item.quantity || 0) - parseFloat(bom_quantity)) < 0.001 &&
+                   Math.abs(parseFloat(item.price || 0) - parseFloat(price)) < 0.01;
+        });
+        
+        if (matchingBomItem) {
+            length_ft = matchingBomItem.length_ft || '0';
+            width_ft = matchingBomItem.width_ft || '0';
+            thickness_inch = matchingBomItem.thickness_inch || '0';
+        }
+    }
+    
     console.log('Individual save - BOM quantity:', bom_quantity);
     console.log('Individual save - Row serial:', row_serial);
     console.log('Individual save - Assigned quantity:', assigned_quantity);
     console.log('Individual save - Price:', price);
+    console.log('Individual save - Wood dimensions:', length_ft, width_ft, thickness_inch);
     
     // Create single item array with unique row identification
     var items_to_save = [{
@@ -81,6 +107,9 @@ function saveIndividualRow(targetRow) {
         price: price,
         bom_quantity: bom_quantity, // Add BOM quantity for precise matching
         row_serial: row_serial, // Add row serial for identification
+        length_ft: length_ft, // Wood dimensions for precise matching
+        width_ft: width_ft,
+        thickness_inch: thickness_inch,
         date: new Date().toISOString().split('T')[0] // Add current date
         total: (parseFloat(assigned_quantity) * parseFloat(price)).toFixed(2),
         invoice_number: invoice_number,

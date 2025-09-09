@@ -129,6 +129,11 @@ try {
         }
     }
 
+    // Get additional dimensions for Wood items
+    $length_ft = floatval($item_data['length_ft'] ?? 0);
+    $width_ft = floatval($item_data['width_ft'] ?? 0);
+    $thickness_inch = floatval($item_data['thickness_inch'] ?? 0);
+    
     // Find existing item using multiple criteria for precision
     $existing_item = null;
     
@@ -140,50 +145,70 @@ try {
     }
     
     if (!$existing_item) {
-        // Try precise matching with all available criteria
-        $stmt_precise = $conn->prepare("
-            SELECT id, invoice_number, builty_number, invoice_image, builty_image 
-            FROM purchase_items 
-            WHERE purchase_main_id = ? 
-            AND supplier_name = ? 
-            AND product_type = ? 
-            AND product_name = ? 
-            AND job_card_number = ? 
-            AND ABS(price - ?) < 0.01
-            AND ABS(assigned_quantity - ?) < 0.001
-            LIMIT 1
-        ");
-        $stmt_precise->execute([
-            $purchase_main_id,
-            $supplier_name,
-            $product_type,
-            $product_name,
-            $job_card_number,
-            $price,
-            $assigned_quantity
-        ]);
-        $existing_item = $stmt_precise->fetch(PDO::FETCH_ASSOC);
+        // For Wood items, include dimensions in matching
+        if ($product_type === 'Wood' && $length_ft > 0 && $width_ft > 0) {
+            $stmt_wood = $conn->prepare("
+                SELECT id, invoice_number, builty_number, invoice_image, builty_image 
+                FROM purchase_items 
+                WHERE purchase_main_id = ? 
+                AND supplier_name = ? 
+                AND product_type = ? 
+                AND product_name = ? 
+                AND job_card_number = ? 
+                AND ABS(price - ?) < 0.01
+                AND ABS(assigned_quantity - ?) < 0.001
+                AND ABS(COALESCE(length_ft, 0) - ?) < 0.01
+                AND ABS(COALESCE(width_ft, 0) - ?) < 0.01
+                AND ABS(COALESCE(thickness_inch, 0) - ?) < 0.01
+                LIMIT 1
+            ");
+            $stmt_wood->execute([
+                $purchase_main_id, $supplier_name, $product_type, $product_name, $job_card_number,
+                $price, $assigned_quantity, $length_ft, $width_ft, $thickness_inch
+            ]);
+            $existing_item = $stmt_wood->fetch(PDO::FETCH_ASSOC);
+        } else {
+            // For non-Wood items, use standard matching
+            $stmt_precise = $conn->prepare("
+                SELECT id, invoice_number, builty_number, invoice_image, builty_image 
+                FROM purchase_items 
+                WHERE purchase_main_id = ? 
+                AND supplier_name = ? 
+                AND product_type = ? 
+                AND product_name = ? 
+                AND job_card_number = ? 
+                AND ABS(price - ?) < 0.01
+                AND ABS(assigned_quantity - ?) < 0.001
+                LIMIT 1
+            ");
+            $stmt_precise->execute([
+                $purchase_main_id, $supplier_name, $product_type, $product_name, $job_card_number,
+                $price, $assigned_quantity
+            ]);
+            $existing_item = $stmt_precise->fetch(PDO::FETCH_ASSOC);
+        }
     }
 
     if ($existing_item) {
         // Update existing item
         if ($is_superadmin) {
-            // Superadmin can update all fields
-            $stmt_update = $conn->prepare("
-                UPDATE purchase_items SET 
-                assigned_quantity = ?, price = ?, total = ?, date = ?, 
-                invoice_number = ?, amount = ?, invoice_image = ?, 
-                builty_number = ?, builty_image = ?, updated_at = NOW() 
-                WHERE id = ?
-            ");
-            $stmt_update->execute([
-                $assigned_quantity, $price, $total, $date,
-                $invoice_number, $total, $invoice_image_name,
-                $builty_number, $builty_image_name, $existing_item['id']
-            ]);
-        } else {
-            // Regular user: Update if not approved
-            if (empty($existing_item['invoice_number'])) {
+            // Superadmin can update all fields including dimensions
+            if ($product_type === 'Wood') {
+                $stmt_update = $conn->prepare("
+                    UPDATE purchase_items SET 
+                    assigned_quantity = ?, price = ?, total = ?, date = ?, 
+                    invoice_number = ?, amount = ?, invoice_image = ?, 
+                    builty_number = ?, builty_image = ?, 
+                    length_ft = ?, width_ft = ?, thickness_inch = ?, updated_at = NOW() 
+                    WHERE id = ?
+                ");
+                $stmt_update->execute([
+                    $assigned_quantity, $price, $total, $date,
+                    $invoice_number, $total, $invoice_image_name,
+                    $builty_number, $builty_image_name,
+                    $length_ft, $width_ft, $thickness_inch, $existing_item['id']
+                ]);
+            } else {
                 $stmt_update = $conn->prepare("
                     UPDATE purchase_items SET 
                     assigned_quantity = ?, price = ?, total = ?, date = ?, 
@@ -196,6 +221,39 @@ try {
                     $invoice_number, $total, $invoice_image_name,
                     $builty_number, $builty_image_name, $existing_item['id']
                 ]);
+            }
+        } else {
+            // Regular user: Update if not approved
+            if (empty($existing_item['invoice_number'])) {
+                if ($product_type === 'Wood') {
+                    $stmt_update = $conn->prepare("
+                        UPDATE purchase_items SET 
+                        assigned_quantity = ?, price = ?, total = ?, date = ?, 
+                        invoice_number = ?, amount = ?, invoice_image = ?, 
+                        builty_number = ?, builty_image = ?, 
+                        length_ft = ?, width_ft = ?, thickness_inch = ?, updated_at = NOW() 
+                        WHERE id = ?
+                    ");
+                    $stmt_update->execute([
+                        $assigned_quantity, $price, $total, $date,
+                        $invoice_number, $total, $invoice_image_name,
+                        $builty_number, $builty_image_name,
+                        $length_ft, $width_ft, $thickness_inch, $existing_item['id']
+                    ]);
+                } else {
+                    $stmt_update = $conn->prepare("
+                        UPDATE purchase_items SET 
+                        assigned_quantity = ?, price = ?, total = ?, date = ?, 
+                        invoice_number = ?, amount = ?, invoice_image = ?, 
+                        builty_number = ?, builty_image = ?, updated_at = NOW() 
+                        WHERE id = ?
+                    ");
+                    $stmt_update->execute([
+                        $assigned_quantity, $price, $total, $date,
+                        $invoice_number, $total, $invoice_image_name,
+                        $builty_number, $builty_image_name, $existing_item['id']
+                    ]);
+                }
             } else {
                 // Only update images if new files uploaded
                 if ($invoice_image_name !== $existing_item['invoice_image'] || $builty_image_name !== $existing_item['builty_image']) {
@@ -207,18 +265,35 @@ try {
         $updated_id = $existing_item['id'];
     } else {
         // Insert new item
-        $stmt_insert = $conn->prepare("
-            INSERT INTO purchase_items 
-            (purchase_main_id, supplier_name, product_type, product_name, job_card_number, 
-             assigned_quantity, price, total, date, invoice_number, amount, 
-             invoice_image, builty_number, builty_image, created_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-        ");
-        $stmt_insert->execute([
-            $purchase_main_id, $supplier_name, $product_type, $product_name, $job_card_number,
-            $assigned_quantity, $price, $total, $date, $invoice_number, $total,
-            $invoice_image_name, $builty_number, $builty_image_name
-        ]);
+        if ($product_type === 'Wood') {
+            $stmt_insert = $conn->prepare("
+                INSERT INTO purchase_items 
+                (purchase_main_id, supplier_name, product_type, product_name, job_card_number, 
+                 assigned_quantity, price, total, date, invoice_number, amount, 
+                 invoice_image, builty_number, builty_image, 
+                 length_ft, width_ft, thickness_inch, created_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ");
+            $stmt_insert->execute([
+                $purchase_main_id, $supplier_name, $product_type, $product_name, $job_card_number,
+                $assigned_quantity, $price, $total, $date, $invoice_number, $total,
+                $invoice_image_name, $builty_number, $builty_image_name,
+                $length_ft, $width_ft, $thickness_inch
+            ]);
+        } else {
+            $stmt_insert = $conn->prepare("
+                INSERT INTO purchase_items 
+                (purchase_main_id, supplier_name, product_type, product_name, job_card_number, 
+                 assigned_quantity, price, total, date, invoice_number, amount, 
+                 invoice_image, builty_number, builty_image, created_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ");
+            $stmt_insert->execute([
+                $purchase_main_id, $supplier_name, $product_type, $product_name, $job_card_number,
+                $assigned_quantity, $price, $total, $date, $invoice_number, $total,
+                $invoice_image_name, $builty_number, $builty_image_name
+            ]);
+        }
         $updated_id = $conn->lastInsertId();
     }
 
