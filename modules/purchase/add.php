@@ -203,12 +203,6 @@ try {
 <script src="js/purchase-editable.js?v=<?php echo time(); ?>"></script>
 <script src="js/bulk-operations.js?v=<?php echo time(); ?>"></script>
 <script src="fix_individual_save.js?v=<?php echo time(); ?>"></script>
-<script src="ultimate_fix.js?v=<?php echo time(); ?>"></script>
-<script src="simple_fix.js?v=<?php echo time(); ?>"></script>
-<script src="debug_fix.js?v=<?php echo time(); ?>"></script>
-<script src="final_fix.js?v=<?php echo time(); ?>"></script>
-<script src="direct_fix.js?v=<?php echo time(); ?>"></script>
-<script src="clean_solution.js?v=<?php echo time(); ?>"></script>
 <script src="working_fix.js?v=<?php echo time(); ?>"></script>
 
 <script>
