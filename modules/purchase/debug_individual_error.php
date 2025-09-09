@@ -4,8 +4,26 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 session_start();
-include_once __DIR__ . '/../../config/config.php';
-include_once __DIR__ . '/audit_log.php';
+
+// Try multiple config paths
+$config_paths = [
+    __DIR__ . '/../../config/config.php',
+    dirname(__DIR__, 2) . '/config/config.php',
+    $_SERVER['DOCUMENT_ROOT'] . '/config/config.php'
+];
+
+$config_loaded = false;
+foreach ($config_paths as $path) {
+    if (file_exists($path)) {
+        include_once $path;
+        $config_loaded = true;
+        break;
+    }
+}
+
+if ($config_loaded) {
+    include_once __DIR__ . '/audit_log.php';
+}
 
 header('Content-Type: application/json');
 
