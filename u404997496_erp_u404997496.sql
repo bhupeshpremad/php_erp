@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: Sep 09, 2025 at 04:28 AM
+-- Generation Time: Sep 09, 2025 at 08:59 AM
 -- Server version: 10.11.10-MariaDB-log
 -- PHP Version: 7.2.34
 
@@ -1154,7 +1154,9 @@ INSERT INTO `po_items` (`id`, `po_id`, `product_code`, `product_name`, `quantity
 (123, 19, 'ADC-490', 'AHFLDT71MT230_Dining table Mayfield 230-Base', 10.00, '', 1900.00, 19000.00, '', '2025-09-05 04:30:21', '2025-09-05 04:30:21'),
 (124, 19, 'AHFLCN30-B', 'Console Table Wooden Base', 80.00, '', 1850.00, 148000.00, '', '2025-09-05 04:30:21', '2025-09-05 04:30:21'),
 (125, 19, 'ADC-526', 'AHFL-RD140MB_Fluting Round Table Wooden Base', 15.00, '', 3100.00, 46500.00, '', '2025-09-05 04:30:21', '2025-09-05 04:30:21'),
-(126, 20, 'NA', 'ARM CHAIR (SAMPLE)', 1.00, '', 2750.00, 2750.00, '', '2025-09-06 05:17:48', '2025-09-06 05:17:48');
+(126, 20, 'NA', 'ARM CHAIR (SAMPLE)', 1.00, '', 2750.00, 2750.00, '', '2025-09-06 05:17:48', '2025-09-06 05:17:48'),
+(128, 21, 'AHCNDT71wMN', 'CONE MARBLE DINING TABLE - NATURAL 5 BASE', 25.00, '', 6200.00, 155000.00, '', '2025-09-09 06:13:47', '2025-09-09 06:13:47'),
+(129, 21, 'AHFLST16Vww', 'RONDO MARBLE  SIDE TABLE', 20.00, '', 1540.00, 30800.00, '', '2025-09-09 06:13:47', '2025-09-09 06:13:47');
 
 -- --------------------------------------------------------
 
@@ -1205,7 +1207,8 @@ INSERT INTO `po_main` (`id`, `po_number`, `client_name`, `prepared_by`, `order_d
 (17, '4312', 'APL', 'Mahaveer Singh', '2025-08-08', '2025-09-02', 15, 'Approved', 0, NULL, NULL, '2025-09-01 12:00:05', '2025-09-01 12:20:46', 'SALE-2025-0015', '', 0),
 (18, '887', 'ANSHI DOORS', 'Mahaveer Singh', '2025-08-04', '2025-09-26', 16, 'Approved', 0, NULL, NULL, '2025-09-03 09:18:22', '2025-09-03 11:07:33', 'SALE-2025-0016', '', 1),
 (19, 'PO04513', 'Ambiance Home', 'Mahaveer Singh', '2025-09-05', '2025-09-26', 17, 'Approved', 0, NULL, NULL, '2025-09-04 22:54:17', '2025-09-04 23:01:45', 'SALE-2025-0017', '', 0),
-(20, 'VERBAL BY HUKAM SINGH', '7 SEAS', 'JS CHOUHAN', '2025-09-06', '2025-09-08', 18, 'Approved', 0, NULL, NULL, '2025-09-05 23:47:48', '2025-09-06 00:31:35', 'SALE-2025-0018', '', 1);
+(20, 'VERBAL BY HUKAM SINGH', '7 SEAS', 'JS CHOUHAN', '2025-09-06', '2025-09-08', 18, 'Approved', 0, NULL, NULL, '2025-09-05 23:47:48', '2025-09-06 00:31:35', 'SALE-2025-0018', '', 1),
+(21, '4123', 'APL', 'Mahaveer Singh', '2025-07-08', '2025-08-17', 19, 'Approved', 0, NULL, NULL, '2025-09-09 06:06:36', '2025-09-09 06:27:08', 'SALE-2025-0019', '', 0);
 
 -- --------------------------------------------------------
 
@@ -1226,6 +1229,33 @@ CREATE TABLE `purchase` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `purchase_audit_log`
+--
+
+CREATE TABLE `purchase_audit_log` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `user_type` varchar(50) DEFAULT NULL,
+  `action` varchar(100) DEFAULT NULL,
+  `jci_number` varchar(100) DEFAULT NULL,
+  `details` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`details`)),
+  `ip_address` varchar(45) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `purchase_audit_log`
+--
+
+INSERT INTO `purchase_audit_log` (`id`, `user_id`, `user_type`, `action`, `jci_number`, `details`, `ip_address`, `created_at`) VALUES
+(1, 1, 'superadmin', 'individual_row_created', 'JCI-2025-0004', '{\"supplier_name\":\"90\",\"product_name\":\"Mango\",\"job_card_number\":\"JOB-2025-0004-1\",\"assigned_quantity\":90,\"price\":560,\"updated_id\":\"93\"}', '2405:201:5c09:30dd:94e6:71bb:3afa:414e', '2025-09-09 07:19:47'),
+(2, 1, 'superadmin', 'individual_row_created', 'JCI-2025-0004', '{\"supplier_name\":\"100\",\"product_name\":\"Mango\",\"job_card_number\":\"JOB-2025-0004-1\",\"assigned_quantity\":90,\"price\":560,\"updated_id\":\"94\"}', '2405:201:5c09:30dd:5c8b:101b:deab:4f33', '2025-09-09 07:52:29'),
+(3, 1, 'superadmin', 'individual_row_created', 'JCI-2025-0004', '{\"supplier_name\":\"1000\",\"product_name\":\"Mango\",\"job_card_number\":\"JOB-2025-0004-1\",\"assigned_quantity\":90,\"price\":560,\"updated_id\":\"95\"}', '2405:201:5c09:30dd:5c8b:101b:deab:4f33', '2025-09-09 07:53:30'),
+(4, 1, 'superadmin', 'individual_row_updated', 'JCI-2025-0004', '{\"supplier_name\":\"90\",\"product_name\":\"Mango\",\"job_card_number\":\"JOB-2025-0004-1\",\"assigned_quantity\":90,\"price\":560,\"updated_id\":93}', '2405:201:5c09:30dd:5c8b:101b:deab:4f33', '2025-09-09 08:58:52');
 
 -- --------------------------------------------------------
 
@@ -1251,29 +1281,34 @@ CREATE TABLE `purchase_items` (
   `invoice_image` varchar(255) DEFAULT NULL,
   `builty_number` varchar(100) DEFAULT NULL,
   `builty_image` varchar(255) DEFAULT NULL,
-  `item_approval_status` varchar(50) DEFAULT 'pending'
+  `item_approval_status` varchar(50) DEFAULT 'pending',
+  `length_ft` decimal(10,2) DEFAULT NULL,
+  `width_ft` decimal(10,2) DEFAULT NULL,
+  `thickness_inch` decimal(10,2) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `purchase_items`
 --
 
-INSERT INTO `purchase_items` (`id`, `purchase_main_id`, `supplier_name`, `product_type`, `product_name`, `job_card_number`, `assigned_quantity`, `price`, `total`, `created_at`, `updated_at`, `date`, `invoice_number`, `amount`, `invoice_image`, `builty_number`, `builty_image`, `item_approval_status`) VALUES
-(34, 2, 'ARPIT SALES', 'Glow', 'GLUE', 'JOB-2025-0005-1', 2.000, 160.00, 320.00, '2025-07-30 11:51:40', '2025-09-08 13:11:02', NULL, 'TEST2', 320.00, 'invoice_688a085943ceb_WhatsApp Image 2025-07-28 at 6.36.34 PM.jpeg', 'naa', 'builty_688a085943ced_WhatsApp Image 2025-07-28 at 6.36.34 PM.jpeg', 'pending'),
-(46, 3, 'Ashapurna Enterprises', 'Wood', 'Mango', 'JOB-2025-0006-1', 8.280, 660.00, 5464.80, '2025-07-31 10:55:05', '2025-07-31 11:15:31', '2025-07-26', 'AE/2526/196', 80388.00, 'invoice_688b5053664c5_Ashapurna Enterprises 196.jpeg', '732', 'builty_688b5053664c7_WhatsApp Image 2025-07-31 at 4.43.25 PM.jpeg', 'pending'),
-(67, 1, 'test suppi2', 'Glow', 'glue', 'JOB-2025-0001-1', 0.300, 100.00, 30.00, '2025-08-11 07:03:11', '2025-08-11 07:03:11', NULL, NULL, NULL, NULL, NULL, NULL, 'pending'),
-(68, 1, 'test suppi2', 'Hardware', 'hardware', 'JOB-2025-0001-1', 1.000, 100.00, 100.00, '2025-08-11 07:03:11', '2025-08-11 07:03:11', NULL, NULL, NULL, NULL, NULL, NULL, 'pending'),
-(69, 1, 'test suppi1', 'Plynydf', 'Plynydf', 'JOB-2025-0001-1', 1.000, 10.00, 10.00, '2025-08-11 07:03:11', '2025-08-11 07:03:11', NULL, NULL, NULL, NULL, NULL, NULL, 'pending'),
-(70, 1, 'test suppi1', 'Wood', 'Mango', 'JOB-2025-0001-1', 3.000, 20.00, 60.00, '2025-08-11 07:03:11', '2025-08-11 07:03:11', NULL, NULL, NULL, NULL, NULL, NULL, 'pending'),
-(71, 3, 'JAI GURUDEV ENTERPRISES', 'Wood', 'Mango', 'JOB-2025-0006-1', 31.950, 660.00, 21087.00, '2025-08-12 10:35:36', '2025-08-12 11:00:59', '2025-07-27', '1411/2025-26', 37688.00, 'invoice_689b1eebe090f_WhatsApp Image 2025-08-12 at 4.28.08 PM.jpeg', '1411', 'builty_689b1eebe0912_WhatsApp Image 2025-08-12 at 4.28.08 PM (1).jpeg', 'pending'),
-(72, 3, 'Maruti Timber Art And Carft', 'Wood', 'Mango', 'JOB-2025-0006-1', 7.480, 690.00, 5161.20, '2025-08-15 07:08:06', '2025-08-15 08:02:22', '2025-08-02', '25-26/89', 193607.00, 'invoice_689ee98eb8907_WhatsApp_Image_2025-08-15_at_1.31.02_PM.jpeg', '1511', 'builty_689ee98eb8948_WhatsApp_Image_2025-08-15_at_1.31.03_PM.jpeg', 'pending'),
-(73, 3, 'Maruti Art And Craft', 'Wood', 'Mango', 'JOB-2025-0006-1', 6.380, 560.00, 3572.80, '2025-08-15 08:51:41', '2025-08-15 09:08:13', '2025-07-10', '25-26/79', 38815.00, 'invoice_689ef8fd7adf8_Capture.PNG', '79', 'builty_689ef8fd7ae22_Capture.PNG', 'pending'),
-(75, 3, 'MARWAR HARDWARE', 'Hardware', 'HARDWARE', 'JOB-2025-0006-1', 0.300, 3750.00, 1125.00, '2025-08-16 10:36:48', '2025-08-16 10:36:48', NULL, NULL, NULL, NULL, NULL, NULL, 'pending'),
-(81, 4, 'Maruti Art & Craft', 'Wood', 'Mango', 'JOB-2025-0007-1', 54.668, 560.00, 30614.08, '2025-09-02 09:47:06', '2025-09-02 09:47:06', NULL, NULL, NULL, NULL, NULL, NULL, 'pending'),
-(82, 5, 'ASHAPURNA ENTERPRISES', 'Wood', 'Mango', 'JOB-2025-0004-1', 9.870, 560.00, 5527.20, '2025-09-08 11:40:38', '2025-09-09 04:22:30', NULL, 'AE/2526/196', 5527.20, 'invoice_68bfab865b303.png', '733', 'builty_68bec0b6d0a6c.jpeg', 'pending'),
-(85, 5, 'dghgjgjfhg', 'Wood', 'Mango', 'JOB-2025-0004-1', 4.550, 560.00, 2548.00, '2025-09-09 04:17:44', '2025-09-09 04:17:44', NULL, 'hghg', 2548.00, 'invoice_68bec0b6d0741.jpeg', '62', 'builty_68bec0b6d0a6c.jpeg', 'pending'),
-(86, 5, 'SADFllkdl', 'Wood', 'Mango', 'JOB-2025-0004-1', 10.210, 560.00, 5717.60, '2025-09-09 04:19:43', '2025-09-09 04:19:43', NULL, '4623/125', 5717.60, 'invoice_68bfaadfd0c53.jpeg', '460', 'builty_68bec0b6d0a6c.jpeg', 'pending'),
-(87, 5, 'ASHAPURNA ENTERPRISES  1', 'Wood', 'Mango', 'JOB-2025-0004-1', 9.870, 560.00, 5527.20, '2025-09-09 04:22:07', '2025-09-09 04:22:07', NULL, 'AE/2526/196', 5527.20, 'invoice_68bfab6f971dd.png', '733', 'builty_68bfab6f97485.png', 'pending');
+INSERT INTO `purchase_items` (`id`, `purchase_main_id`, `supplier_name`, `product_type`, `product_name`, `job_card_number`, `assigned_quantity`, `price`, `total`, `created_at`, `updated_at`, `date`, `invoice_number`, `amount`, `invoice_image`, `builty_number`, `builty_image`, `item_approval_status`, `length_ft`, `width_ft`, `thickness_inch`) VALUES
+(34, 2, 'ARPIT SALES', 'Glow', 'GLUE', 'JOB-2025-0005-1', 2.000, 160.00, 320.00, '2025-07-30 11:51:40', '2025-09-08 13:11:02', NULL, 'TEST2', 320.00, 'invoice_688a085943ceb_WhatsApp Image 2025-07-28 at 6.36.34 PM.jpeg', 'naa', 'builty_688a085943ced_WhatsApp Image 2025-07-28 at 6.36.34 PM.jpeg', 'pending', NULL, NULL, NULL),
+(46, 3, 'Ashapurna Enterprises', 'Wood', 'Mango', 'JOB-2025-0006-1', 8.280, 660.00, 5464.80, '2025-07-31 10:55:05', '2025-07-31 11:15:31', '2025-07-26', 'AE/2526/196', 80388.00, 'invoice_688b5053664c5_Ashapurna Enterprises 196.jpeg', '732', 'builty_688b5053664c7_WhatsApp Image 2025-07-31 at 4.43.25 PM.jpeg', 'pending', NULL, NULL, NULL),
+(67, 1, 'test suppi2', 'Glow', 'glue', 'JOB-2025-0001-1', 0.300, 100.00, 30.00, '2025-08-11 07:03:11', '2025-08-11 07:03:11', NULL, NULL, NULL, NULL, NULL, NULL, 'pending', NULL, NULL, NULL),
+(68, 1, 'test suppi2', 'Hardware', 'hardware', 'JOB-2025-0001-1', 1.000, 100.00, 100.00, '2025-08-11 07:03:11', '2025-08-11 07:03:11', NULL, NULL, NULL, NULL, NULL, NULL, 'pending', NULL, NULL, NULL),
+(69, 1, 'test suppi1', 'Plynydf', 'Plynydf', 'JOB-2025-0001-1', 1.000, 10.00, 10.00, '2025-08-11 07:03:11', '2025-08-11 07:03:11', NULL, NULL, NULL, NULL, NULL, NULL, 'pending', NULL, NULL, NULL),
+(70, 1, 'test suppi1', 'Wood', 'Mango', 'JOB-2025-0001-1', 3.000, 20.00, 60.00, '2025-08-11 07:03:11', '2025-08-11 07:03:11', NULL, NULL, NULL, NULL, NULL, NULL, 'pending', NULL, NULL, NULL),
+(71, 3, 'JAI GURUDEV ENTERPRISES', 'Wood', 'Mango', 'JOB-2025-0006-1', 31.950, 660.00, 21087.00, '2025-08-12 10:35:36', '2025-08-12 11:00:59', '2025-07-27', '1411/2025-26', 37688.00, 'invoice_689b1eebe090f_WhatsApp Image 2025-08-12 at 4.28.08 PM.jpeg', '1411', 'builty_689b1eebe0912_WhatsApp Image 2025-08-12 at 4.28.08 PM (1).jpeg', 'pending', NULL, NULL, NULL),
+(72, 3, 'Maruti Timber Art And Carft', 'Wood', 'Mango', 'JOB-2025-0006-1', 7.480, 690.00, 5161.20, '2025-08-15 07:08:06', '2025-08-15 08:02:22', '2025-08-02', '25-26/89', 193607.00, 'invoice_689ee98eb8907_WhatsApp_Image_2025-08-15_at_1.31.02_PM.jpeg', '1511', 'builty_689ee98eb8948_WhatsApp_Image_2025-08-15_at_1.31.03_PM.jpeg', 'pending', NULL, NULL, NULL),
+(73, 3, 'Maruti Art And Craft', 'Wood', 'Mango', 'JOB-2025-0006-1', 6.380, 560.00, 3572.80, '2025-08-15 08:51:41', '2025-08-15 09:08:13', '2025-07-10', '25-26/79', 38815.00, 'invoice_689ef8fd7adf8_Capture.PNG', '79', 'builty_689ef8fd7ae22_Capture.PNG', 'pending', NULL, NULL, NULL),
+(75, 3, 'MARWAR HARDWARE', 'Hardware', 'HARDWARE', 'JOB-2025-0006-1', 0.300, 3750.00, 1125.00, '2025-08-16 10:36:48', '2025-08-16 10:36:48', NULL, NULL, NULL, NULL, NULL, NULL, 'pending', NULL, NULL, NULL),
+(81, 4, 'Maruti Art & Craft', 'Wood', 'Mango', 'JOB-2025-0007-1', 54.668, 560.00, 30614.08, '2025-09-02 09:47:06', '2025-09-02 09:47:06', NULL, NULL, NULL, NULL, NULL, NULL, 'pending', NULL, NULL, NULL),
+(82, 5, 'ASHAPURNA ENTERPRISES', 'Wood', 'Mango', 'JOB-2025-0004-1', 9.870, 560.00, 5527.20, '2025-09-08 11:40:38', '2025-09-09 06:01:11', NULL, 'AE/2526/196', 5527.20, 'invoice_68bfba63d5202.png', '456', 'builty_68bec0b6d0a6c.jpeg', 'pending', NULL, NULL, NULL),
+(85, 5, 'dghgjgjfhg', 'Wood', 'Mango', 'JOB-2025-0004-1', 4.550, 560.00, 2548.00, '2025-09-09 04:17:44', '2025-09-09 04:17:44', NULL, 'hghg', 2548.00, 'invoice_68bec0b6d0741.jpeg', '62', 'builty_68bec0b6d0a6c.jpeg', 'pending', NULL, NULL, NULL),
+(86, 5, 'SADFllkdl', 'Wood', 'Mango', 'JOB-2025-0004-1', 10.210, 560.00, 5717.60, '2025-09-09 04:19:43', '2025-09-09 04:19:43', NULL, '4623/125', 5717.60, 'invoice_68bfaadfd0c53.jpeg', '460', 'builty_68bec0b6d0a6c.jpeg', 'pending', NULL, NULL, NULL),
+(93, 5, '90', 'Wood', 'Mango', 'JOB-2025-0004-1', 90.000, 560.00, 50400.00, '2025-09-09 07:19:47', '2025-09-09 08:58:52', '2025-09-09', '90', 50400.00, 'invoice_68bfec4c830f0.png', '90', 'builty_68bfec4c836b9.png', 'pending', 1.75, 1.58, 1.00),
+(94, 5, '100', 'Wood', 'Mango', 'JOB-2025-0004-1', 90.000, 560.00, 50400.00, '2025-09-09 07:52:29', '2025-09-09 07:52:29', '2025-09-09', '90', 50400.00, 'invoice_68bfdcbd4bfc7.png', '90', 'builty_68bfdcbd4c815.png', 'pending', 1.75, 1.58, 1.00),
+(95, 5, '1000', 'Wood', 'Mango', 'JOB-2025-0004-1', 90.000, 560.00, 50400.00, '2025-09-09 07:53:30', '2025-09-09 07:53:30', '2025-09-09', '90', 50400.00, 'invoice_68bfdcfa4a627.png', '90', 'builty_68bfdcfa4ab20.png', 'pending', 1.75, 1.58, 1.00);
 
 -- --------------------------------------------------------
 
@@ -1301,7 +1336,7 @@ INSERT INTO `purchase_main` (`id`, `po_number`, `jci_number`, `sell_order_number
 (2, 'TEST-PD001', 'JCI-2025-0005', 'SALE-2025-0005', 'BOM-2025-0006', '2025-07-30 10:55:46', '2025-09-08 13:11:02', 'pending'),
 (3, '3764', 'JCI-2025-0006', 'SALE-2025-0006', 'BOM-2025-0007', '2025-07-31 09:43:54', '2025-09-05 12:30:23', 'sent_for_approval'),
 (4, '4244', 'JCI-2025-0007', 'SALE-2025-0007', 'BOM-2025-0008', '2025-09-01 10:52:12', '2025-09-02 09:47:06', 'pending'),
-(5, '2145', 'JCI-2025-0004', 'SALE-2025-0004', 'BOM-2025-0004', '2025-09-08 11:40:38', '2025-09-09 04:22:30', 'pending');
+(5, '2145', 'JCI-2025-0004', 'SALE-2025-0004', 'BOM-2025-0004', '2025-09-08 11:40:38', '2025-09-09 08:58:52', 'pending');
 
 -- --------------------------------------------------------
 
@@ -1534,7 +1569,8 @@ INSERT INTO `sell_order` (`id`, `sell_order_number`, `po_id`, `created_at`, `upd
 (15, 'SALE-2025-0015', 17, '2025-09-01 12:20:46', '2025-09-01 12:20:46', 0),
 (16, 'SALE-2025-0016', 18, '2025-09-03 09:27:57', '2025-09-03 10:24:45', 1),
 (17, 'SALE-2025-0017', 19, '2025-09-05 04:31:45', '2025-09-05 04:31:45', 0),
-(18, 'SALE-2025-0018', 20, '2025-09-06 06:00:41', '2025-09-06 06:01:35', 1);
+(18, 'SALE-2025-0018', 20, '2025-09-06 06:00:41', '2025-09-06 06:01:35', 1),
+(19, 'SALE-2025-0019', 21, '2025-09-09 06:27:08', '2025-09-09 06:27:08', 0);
 
 -- --------------------------------------------------------
 
@@ -1925,6 +1961,12 @@ ALTER TABLE `purchase`
   ADD KEY `idx_purchase_date` (`purchase_date`);
 
 --
+-- Indexes for table `purchase_audit_log`
+--
+ALTER TABLE `purchase_audit_log`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `purchase_items`
 --
 ALTER TABLE `purchase_items`
@@ -2190,13 +2232,13 @@ ALTER TABLE `po`
 -- AUTO_INCREMENT for table `po_items`
 --
 ALTER TABLE `po_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=127;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=130;
 
 --
 -- AUTO_INCREMENT for table `po_main`
 --
 ALTER TABLE `po_main`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT for table `purchase`
@@ -2205,10 +2247,16 @@ ALTER TABLE `purchase`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `purchase_audit_log`
+--
+ALTER TABLE `purchase_audit_log`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
 -- AUTO_INCREMENT for table `purchase_items`
 --
 ALTER TABLE `purchase_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=88;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=96;
 
 --
 -- AUTO_INCREMENT for table `purchase_main`
@@ -2238,7 +2286,7 @@ ALTER TABLE `quotation_status`
 -- AUTO_INCREMENT for table `sell_order`
 --
 ALTER TABLE `sell_order`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
 -- AUTO_INCREMENT for table `so`
