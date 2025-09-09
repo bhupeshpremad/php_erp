@@ -836,12 +836,19 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
             console.log('item.product_name:', item.product_name);
             console.log('jobCard:', jobCard);
             
-            // Add delete button for superadmin on saved rows (force show for testing)
-            if (supplierName && supplierName.trim() !== '') {
-                console.log('ADDING DELETE BUTTON!');
-                actionTd += ' <button type="button" class="btn btn-danger btn-sm deleteRowBtn" data-supplier="' + supplierName + '" data-product="' + item.product_name + '" data-job-card="' + jobCard + '">Del</button>';
+            // Add delete button for superadmin on saved rows  
+            var isSuperAdmin = <?php echo json_encode($is_superadmin); ?>;
+            if (isSuperAdmin && supplierName && supplierName.trim() !== '') {
+                console.log('ADDING DELETE BUTTON for supplier:', supplierName);
+                // Escape quotes in data attributes
+                var safeSupplier = supplierName.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+                var safeProduct = item.product_name.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+                var safeJobCard = jobCard.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+                actionTd += ' <button type="button" class="btn btn-danger btn-sm deleteRowBtn" data-supplier="' + safeSupplier + '" data-product="' + safeProduct + '" data-job-card="' + safeJobCard + '" title="Delete this row">Delete</button>';
+            } else if (!isSuperAdmin) {
+                console.log('DELETE BUTTON NOT SHOWN - not superadmin');
             } else {
-                console.log('DELETE BUTTON NOT ADDED - condition failed');
+                console.log('DELETE BUTTON NOT SHOWN - no supplier name');
             }
             
             console.log('Final actionTd HTML:', actionTd);
@@ -888,16 +895,34 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
         }
     });
     
-    // Delete row handler for superadmin
-    $('#bomTableContainer').on('click', '.deleteRowBtn', function() {
-        var supplier = $(this).data('supplier');
-        var product = $(this).data('product');
-        var jobCard = $(this).data('job-card');
+    // Delete row handler for superadmin - with improved error handling
+    $('#bomTableContainer').on('click', '.deleteRowBtn', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        var $btn = $(this);
+        var supplier = $btn.data('supplier');
+        var product = $btn.data('product');
+        var jobCard = $btn.data('job-card');
         var jciNumber = $('#jci_number').val();
         
-        var confirmMsg = 'Delete saved data for:\nSupplier: ' + supplier + '\nProduct: ' + product + '\n\nThis will clear the row data.';
+        console.log('Delete button clicked:', {
+            supplier: supplier,
+            product: product,
+            jobCard: jobCard,
+            jciNumber: jciNumber
+        });
+        
+        if (!supplier || !product || !jobCard || !jciNumber) {
+            toastr.error('Missing required data for deletion');
+            return;
+        }
+        
+        var confirmMsg = 'Delete saved data for:\nSupplier: ' + supplier + '\nProduct: ' + product + '\nJob Card: ' + jobCard + '\n\nThis will permanently delete the row data.';
         
         if (confirm(confirmMsg)) {
+            $btn.prop('disabled', true).text('Deleting...');
+            
             $.ajax({
                 url: 'ajax_delete_row_by_details.php',
                 method: 'POST',
@@ -908,16 +933,21 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
                     jci_number: jciNumber
                 },
                 dataType: 'json',
+                timeout: 10000,
                 success: function(response) {
+                    console.log('Delete response:', response);
                     if (response.success) {
-                        toastr.success('Saved data deleted successfully!');
+                        toastr.success('Row deleted successfully!');
                         $('#jci_number_search').trigger('change'); // Reload table
                     } else {
-                        toastr.error(response.error);
+                        toastr.error(response.error || 'Failed to delete row');
+                        $btn.prop('disabled', false).text('Delete');
                     }
                 },
-                error: function() {
-                    toastr.error('Error deleting saved data');
+                error: function(xhr, status, error) {
+                    console.error('Delete AJAX error:', xhr.responseText, status, error);
+                    toastr.error('Network error while deleting: ' + error);
+                    $btn.prop('disabled', false).text('Delete');
                 }
             });
         }
