@@ -84,6 +84,9 @@ $(document).ready(function() {
     setTimeout(function() {
         console.log('=== WORKING FIX: Complete Override ===');
         
+        // Override the main success function in add.php
+        var originalAjaxSuccess = $.fn.ajaxSuccess;
+        
         // Completely override the AJAX success for saved purchase
         $(document).ajaxSuccess(function(event, xhr, settings) {
             if (settings.url === 'ajax_fetch_saved_purchase.php') {
@@ -91,15 +94,30 @@ $(document).ready(function() {
                     try {
                         var purchaseData = JSON.parse(xhr.responseText);
                         if (purchaseData && purchaseData.has_purchase && purchaseData.purchase_items) {
+                            console.log('=== WORKING FIX: Intercepted AJAX response ===');
+                            // Clear any existing table first
+                            $('#bomTableContainer').empty();
+                            // Create our table
                             window.createPurchaseTable(purchaseData.purchase_items);
+                            // Prevent other scripts from running
+                            event.stopImmediatePropagation();
                         }
                     } catch (e) {
                         console.error('Working fix error:', e);
                     }
-                }, 100);
+                }, 50);
             }
         });
         
+        // Also override the main render function that gets called
+        window.renderBOMTable = function(jobCards, bomItems, existingItems) {
+            console.log('=== WORKING FIX: Overriding renderBOMTable ===');
+            if (existingItems && existingItems.length > 0) {
+                window.createPurchaseTable(existingItems);
+            }
+            return false; // Prevent original function
+        };
+        
         console.log('Working fix installed');
-    }, 1000);
+    }, 500);
 });
