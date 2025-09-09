@@ -8,7 +8,7 @@ try {
     $host = 'localhost';
     $dbname = 'u404997496_erp';
     $username = 'u404997496_erp_u404997496';
-    $password = 'Purewood@123';
+    $password = 'PUrewood@2025#';
     
     $conn = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
