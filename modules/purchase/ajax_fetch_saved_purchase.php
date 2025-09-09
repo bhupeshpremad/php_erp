@@ -28,8 +28,19 @@ try {
         exit;
     }
     
-    // Fetch purchase items with proper data cleaning
-    $stmt_items = $conn->prepare("SELECT *, TRIM(supplier_name) as supplier_name, TRIM(product_type) as product_type, TRIM(product_name) as product_name, TRIM(job_card_number) as job_card_number FROM purchase_items WHERE purchase_main_id = ?");
+    // Fetch purchase items with proper data cleaning including Wood dimensions
+    $stmt_items = $conn->prepare("
+        SELECT *, 
+        TRIM(supplier_name) as supplier_name, 
+        TRIM(product_type) as product_type, 
+        TRIM(product_name) as product_name, 
+        TRIM(job_card_number) as job_card_number,
+        COALESCE(length_ft, 0) as length_ft,
+        COALESCE(width_ft, 0) as width_ft,
+        COALESCE(thickness_inch, 0) as thickness_inch
+        FROM purchase_items 
+        WHERE purchase_main_id = ?
+    ");
     $stmt_items->execute([$purchase_main['id']]);
     $purchase_items = $stmt_items->fetchAll(PDO::FETCH_ASSOC);
     

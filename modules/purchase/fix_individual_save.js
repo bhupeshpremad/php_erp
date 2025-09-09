@@ -146,9 +146,9 @@ function saveIndividualRow(targetRow) {
     var saveBtn = targetRow.find('.saveRowBtn');
     saveBtn.prop('disabled', true).text('Saving...');
     
-    // Use debug endpoint first to check errors
+    // Use dedicated individual save endpoint
     $.ajax({
-        url: 'debug_individual_error.php',
+        url: 'ajax_save_individual_row.php',
         method: 'POST',
         data: formData,
         processData: false,

@@ -661,11 +661,14 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
                     var nameMatch = (pItemProductName === itemProductName || (itemProductName === '' && pItemProductName === itemProductType));
                     var jobCardMatch = pItem.job_card_number === jobCard;
                     
-                    // For Wood items, also match quantity and price to ensure unique mapping
+                    // For Wood items, also match dimensions to ensure unique mapping
                     if (itemProductType === 'Wood' && typeMatch && nameMatch && jobCardMatch) {
+                        var lengthMatch = Math.abs(parseFloat(pItem.length_ft || 0) - parseFloat(item.length_ft || 0)) < 0.01;
+                        var widthMatch = Math.abs(parseFloat(pItem.width_ft || 0) - parseFloat(item.width_ft || 0)) < 0.01;
+                        var thicknessMatch = Math.abs(parseFloat(pItem.thickness_inch || 0) - parseFloat(item.thickness_inch || 0)) < 0.01;
                         var quantityMatch = Math.abs(parseFloat(pItem.assigned_quantity || 0) - parseFloat(item.quantity || 0)) < 0.001;
                         var priceMatch = Math.abs(parseFloat(pItem.price || 0) - parseFloat(item.price || 0)) < 0.01;
-                        return quantityMatch && priceMatch;
+                        return lengthMatch && widthMatch && thicknessMatch && quantityMatch && priceMatch;
                     }
                     
                     return typeMatch && nameMatch && jobCardMatch;
