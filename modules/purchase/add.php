@@ -313,7 +313,31 @@ $('#jci_number_search').on('change', function() {
                                 data: { jci_number: selectedJciNumber },
                                 dataType: 'json',
                                 success: function(purchaseData) {
-                                    console.log('Existing purchase data:', purchaseData);
+                                    console.log('=== EXISTING PURCHASE DATA DEBUG ===');
+                                    console.log('Full purchase data:', purchaseData);
+                                    console.log('Has purchase:', purchaseData.has_purchase);
+                                    if (purchaseData.has_purchase && purchaseData.purchase_items) {
+                                        console.log('Purchase items count:', purchaseData.purchase_items.length);
+                                        console.log('Purchase items details:', purchaseData.purchase_items);
+                                        purchaseData.purchase_items.forEach(function(item, index) {
+                                            console.log('Item ' + index + ':', {
+                                                id: item.id,
+                                                supplier_name: item.supplier_name,
+                                                product_type: item.product_type,
+                                                product_name: item.product_name,
+                                                job_card_number: item.job_card_number,
+                                                assigned_quantity: item.assigned_quantity,
+                                                price: item.price,
+                                                length_ft: item.length_ft,
+                                                width_ft: item.width_ft,
+                                                thickness_inch: item.thickness_inch
+                                            });
+                                        });
+                                    } else {
+                                        console.log('No purchase items found');
+                                    }
+                                    console.log('=== END PURCHASE DATA DEBUG ===');
+                                    
                                     var existingItems = purchaseData.has_purchase ? purchaseData.purchase_items : [];
                                     renderBomTable(jobCards, bomItemsData, existingItems);
                                 },
@@ -649,6 +673,19 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
 
             // Find existing purchase item data for this BOM item
             var existingItem = null;
+            console.log('=== MATCHING DEBUG FOR ITEM ===');
+            console.log('BOM Item:', {
+                product_type: item.product_type,
+                product_name: item.product_name,
+                quantity: item.quantity,
+                price: item.price,
+                length_ft: item.length_ft,
+                width_ft: item.width_ft,
+                thickness_inch: item.thickness_inch
+            });
+            console.log('Job Card:', jobCard);
+            console.log('Available existing items:', existingItems.length);
+            
             if (existingItems && existingItems.length > 0) {
                 existingItem = existingItems.find(function(pItem) {
                     var pItemProductName = (pItem.product_name !== undefined && pItem.product_name !== null) ? String(pItem.product_name).trim() : '';
@@ -671,8 +708,22 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
                         return lengthMatch && widthMatch && thicknessMatch && quantityMatch && priceMatch;
                     }
                     
+                    console.log('Checking match with saved item:', {
+                        id: pItem.id,
+                        product_type: pItemProductType,
+                        product_name: pItemProductName,
+                        job_card: pItem.job_card_number,
+                        typeMatch: typeMatch,
+                        nameMatch: nameMatch,
+                        jobCardMatch: jobCardMatch
+                    });
+                    
                     return typeMatch && nameMatch && jobCardMatch;
                 });
+                
+                console.log('Match result:', existingItem ? 'FOUND ID: ' + existingItem.id : 'NOT FOUND');
+            }
+            console.log('=== END MATCHING DEBUG ===');
             }
 
             var supplierName = existingItem ? (existingItem.supplier_name || '').toString().replace(/"/g, '&quot;') : '';
