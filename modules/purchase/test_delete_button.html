@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Delete Button</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-5">
+    <h3>Test Delete Button Display</h3>
+    <table class="table table-bordered">
+        <tr class="table-success">
+            <td>ASHAPURNA ENTERPRISES</td>
+            <td>Wood</td>
+            <td>Mango</td>
+            <td>
+                <button type="button" class="btn btn-primary btn-sm">Save</button>
+                <button type="button" class="btn btn-danger btn-sm">Del</button>
+            </td>
+        </tr>
+    </table>
+    
+    <script>
+    // Test if isSuperAdmin is working
+    var isSuperAdmin = true;
+    var supplierName = "ASHAPURNA ENTERPRISES";
+    
+    console.log('Test conditions:');
+    console.log('isSuperAdmin:', isSuperAdmin);
+    console.log('supplierName:', supplierName);
+    console.log('supplierName.trim() !== "":', supplierName.trim() !== '');
+    console.log('Should show delete button:', isSuperAdmin && supplierName && supplierName.trim() !== '');
+    </script>
+</div>
+</body>
+</html>
