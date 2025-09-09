@@ -201,11 +201,9 @@ try {
 
 <!-- Purchase Editable JS -->
 <script src="js/purchase-editable.js?v=<?php echo time(); ?>"></script>
-<script src="js/fix-duplicate-display.js?v=<?php echo time(); ?>"></script>
 <script src="js/bulk-operations.js?v=<?php echo time(); ?>"></script>
 <script src="fix_individual_save.js?v=<?php echo time(); ?>"></script>
-<script src="fix_complete_display.js?v=<?php echo time(); ?>"></script>
-<script src="quick_fix.js?v=<?php echo time(); ?>"></script>
+<script src="complete_module_fix.js?v=<?php echo time(); ?>"></script>
 
 <script>
 // Force cache refresh - Version: <?php echo date('Y-m-d H:i:s'); ?>
