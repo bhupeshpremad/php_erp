@@ -730,7 +730,7 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
             var actionTd = '<td>';
             actionTd += '<button type="button" class="btn btn-primary btn-sm saveRowBtn" ' + inputDisabled + '>Save</button>';
             if (isSuperAdmin && existingItem && existingItem.id) {
-                actionTd += ' <button type="button" class="btn btn-danger btn-sm deleteRowBtn" data-row-id="' + existingItem.id + '">Delete</button>';
+                actionTd += ' <button type="button" class="btn btn-danger btn-sm ms-1 deleteRowBtn" data-row-id="' + existingItem.id + '" data-supplier="' + (existingItem.supplier_name || '') + '" data-product="' + (existingItem.product_name || '') + '">Del</button>';
             }
             actionTd += '</td>';
             tr.append(actionTd);
@@ -776,9 +776,13 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
     // Delete row handler for superadmin
     $('#bomTableContainer').on('click', '.deleteRowBtn', function() {
         var rowId = $(this).data('row-id');
+        var supplier = $(this).data('supplier');
+        var product = $(this).data('product');
         var row = $(this).closest('tr');
         
-        if (confirm('Are you sure you want to delete this row? This action cannot be undone.')) {
+        var confirmMsg = 'Delete saved data for:\nSupplier: ' + supplier + '\nProduct: ' + product + '\n\nThis will only delete the saved purchase data, not the BOM row itself.';
+        
+        if (confirm(confirmMsg)) {
             $.ajax({
                 url: 'ajax_delete_row.php',
                 method: 'POST',
@@ -786,14 +790,14 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
-                        toastr.success(response.message);
+                        toastr.success('Saved data deleted successfully!');
                         $('#jci_number_search').trigger('change'); // Reload table
                     } else {
                         toastr.error(response.error);
                     }
                 },
                 error: function() {
-                    toastr.error('Error deleting row');
+                    toastr.error('Error deleting saved data');
                 }
             });
         }
