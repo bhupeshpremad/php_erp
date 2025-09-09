@@ -72,7 +72,7 @@ try {
     }
 
     // Insert/Update purchase_items
-    $stmt_check_item = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ?");
+    $stmt_check_item = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ? AND assigned_quantity = ? AND price = ?");
     $stmt_precise_match = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ? AND assigned_quantity = ? AND price = ? LIMIT 1");
     $stmt_insert_item = $conn->prepare("INSERT INTO purchase_items (purchase_main_id, supplier_name, product_type, product_name, job_card_number, assigned_quantity, price, total, date, invoice_number, amount, invoice_image, builty_number, builty_image, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
 
