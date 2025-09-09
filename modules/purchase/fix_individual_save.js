@@ -157,10 +157,61 @@ function saveIndividualRow(targetRow) {
         success: function(response) {
             if (response.success) {
                 toastr.success('Row saved successfully!');
+                
+                // Update global existingPurchaseItems array
+                if (!window.existingPurchaseItems) {
+                    window.existingPurchaseItems = [];
+                }
+                
+                // Add or update the saved item in global array
+                var savedItem = {
+                    id: response.updated_id || Date.now(),
+                    supplier_name: supplier_name,
+                    product_type: product_type,
+                    product_name: product_name,
+                    job_card_number: job_card_number_from_table,
+                    assigned_quantity: assigned_quantity,
+                    price: price,
+                    total: (parseFloat(assigned_quantity) * parseFloat(price)).toFixed(2),
+                    invoice_number: invoice_number,
+                    builty_number: builty_number,
+                    invoice_image: existing_invoice_image,
+                    builty_image: existing_builty_image,
+                    length_ft: length_ft,
+                    width_ft: width_ft,
+                    thickness_inch: thickness_inch
+                };
+                
+                // Remove existing item with same ID if exists
+                if (uniqueId) {
+                    window.existingPurchaseItems = window.existingPurchaseItems.filter(function(item) {
+                        return item.id !== uniqueId;
+                    });
+                }
+                
+                // Add the new/updated item
+                window.existingPurchaseItems.push(savedItem);
+                
+                console.log('Updated existingPurchaseItems:', window.existingPurchaseItems);
+                
+                // Clear used items tracker to allow fresh matching
+                if (window.PURCHASE_MODULE && window.PURCHASE_MODULE.usedItems) {
+                    window.PURCHASE_MODULE.usedItems.clear();
+                }
+                
+                // Refresh purchase data from server
+                if (typeof window.refreshPurchaseData === 'function') {
+                    window.refreshPurchaseData();
+                }
+                
                 // Update row UI without full reload
                 targetRow.addClass('table-success');
                 targetRow.find('.badge').removeClass('badge-warning').addClass('badge-success').text('Saved');
-                $('#jci_number_search').trigger('change'); // Reload table
+                
+                // Reload table to show updated data
+                setTimeout(function() {
+                    $('#jci_number_search').trigger('change');
+                }, 500);
             } else {
                 toastr.error(response.error || 'Save failed');
             }
