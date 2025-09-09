@@ -729,8 +729,10 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
             // Action column with Save and Delete buttons
             var actionTd = '<td>';
             actionTd += '<button type="button" class="btn btn-primary btn-sm saveRowBtn" ' + inputDisabled + '>Save</button>';
-            if (isSuperAdmin && existingItem && existingItem.id) {
-                actionTd += ' <button type="button" class="btn btn-danger btn-sm ms-1 deleteRowBtn" data-row-id="' + existingItem.id + '" data-supplier="' + (existingItem.supplier_name || '') + '" data-product="' + (existingItem.product_name || '') + '">Del</button>';
+            
+            // Add delete button for superadmin on saved rows
+            if (isSuperAdmin && supplierName && supplierName.trim() !== '') {
+                actionTd += ' <button type="button" class="btn btn-danger btn-sm deleteRowBtn" data-supplier="' + supplierName + '" data-product="' + item.product_name + '" data-job-card="' + jobCard + '">Del</button>';
             }
             actionTd += '</td>';
             tr.append(actionTd);
@@ -775,18 +777,23 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
     
     // Delete row handler for superadmin
     $('#bomTableContainer').on('click', '.deleteRowBtn', function() {
-        var rowId = $(this).data('row-id');
         var supplier = $(this).data('supplier');
         var product = $(this).data('product');
-        var row = $(this).closest('tr');
+        var jobCard = $(this).data('job-card');
+        var jciNumber = $('#jci_number').val();
         
-        var confirmMsg = 'Delete saved data for:\nSupplier: ' + supplier + '\nProduct: ' + product + '\n\nThis will only delete the saved purchase data, not the BOM row itself.';
+        var confirmMsg = 'Delete saved data for:\nSupplier: ' + supplier + '\nProduct: ' + product + '\n\nThis will clear the row data.';
         
         if (confirm(confirmMsg)) {
             $.ajax({
-                url: 'ajax_delete_row.php',
+                url: 'ajax_delete_row_by_details.php',
                 method: 'POST',
-                data: { row_id: rowId },
+                data: { 
+                    supplier_name: supplier,
+                    product_name: product,
+                    job_card_number: jobCard,
+                    jci_number: jciNumber
+                },
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
