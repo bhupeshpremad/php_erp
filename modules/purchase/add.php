@@ -338,12 +338,18 @@ $('#jci_number_search').on('change', function() {
                                     }
                                     console.log('=== END PURCHASE DATA DEBUG ===');
                                     
-                                    var existingItems = purchaseData.has_purchase ? purchaseData.purchase_items : [];
-                                    // Use enhanced render function
-                                    if (typeof renderEnhancedBomTable === 'function') {
-                                        renderEnhancedBomTable(jobCards, bomItemsData, existingItems);
+                                    // Use working fix table creation if available
+                                    if (purchaseData.has_purchase && purchaseData.purchase_items && typeof window.createPurchaseTable === 'function') {
+                                        console.log('=== USING WORKING FIX TABLE CREATION ===');
+                                        window.createPurchaseTable(purchaseData.purchase_items);
                                     } else {
-                                        renderBomTable(jobCards, bomItemsData, existingItems);
+                                        var existingItems = purchaseData.has_purchase ? purchaseData.purchase_items : [];
+                                        // Use enhanced render function
+                                        if (typeof renderEnhancedBomTable === 'function') {
+                                            renderEnhancedBomTable(jobCards, bomItemsData, existingItems);
+                                        } else {
+                                            renderBomTable(jobCards, bomItemsData, existingItems);
+                                        }
                                     }
                                 },
                                 error: function() {

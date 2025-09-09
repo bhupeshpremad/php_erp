@@ -7,9 +7,10 @@ assets/images/upload/
 modules/*/uploads/
 *.log
 
-# Ignore temporary files
+# Ignore temporary files and backups
 *.tmp
 *.temp
+*.zip
 .DS_Store
 Thumbs.db
 
