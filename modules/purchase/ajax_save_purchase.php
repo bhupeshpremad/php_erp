@@ -130,18 +130,35 @@ try {
             $stmt_unique->execute([$purchase_main_id, $unique_id]);
             $existing_item = $stmt_unique->fetch(PDO::FETCH_ASSOC);
         } else {
-            // For new items, use precise matching including quantity and price to avoid bulk updates
-            $stmt_precise_match = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ? AND assigned_quantity = ? AND price = ? LIMIT 1");
-            $stmt_precise_match->execute([
-                $purchase_main_id,
-                $supplier_name,
-                $product_type,
-                $product_name,
-                $job_card_number,
-                $assigned_quantity,
-                $price
-            ]);
-            $existing_item = $stmt_precise_match->fetch(PDO::FETCH_ASSOC);
+            // For individual saves, use BOM quantity + other fields for precise matching
+            $bom_quantity = floatval($item_data['bom_quantity'] ?? 0);
+            $row_serial = $item_data['row_serial'] ?? null;
+            
+            if ($bom_quantity > 0) {
+                // Use BOM quantity for precise row identification
+                $stmt_bom_match = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ? AND price = ? AND (assigned_quantity = ? OR ABS(assigned_quantity - ?) < 0.001) LIMIT 1");
+                $stmt_bom_match->execute([
+                    $purchase_main_id,
+                    $supplier_name,
+                    $product_type,
+                    $product_name,
+                    $job_card_number,
+                    $price,
+                    $assigned_quantity,
+                    $assigned_quantity
+                ]);
+                $existing_item = $stmt_bom_match->fetch(PDO::FETCH_ASSOC);
+            } else {
+                // Fallback to basic matching
+                $stmt_check_item->execute([
+                    $purchase_main_id,
+                    $supplier_name,
+                    $product_type,
+                    $product_name,
+                    $job_card_number
+                ]);
+                $existing_item = $stmt_check_item->fetch(PDO::FETCH_ASSOC);
+            }
         }
 
         if ($existing_item) {
