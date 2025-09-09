@@ -161,11 +161,16 @@ try {
 
 <script>
 $(document).ready(function() {
-    $('#piTable').DataTable({
+    var table = $('#piTable').DataTable({
         order: [[0, 'desc']],
         pageLength: 10,
         lengthChange: false,
         searching: false
+    });
+    
+    // Custom search functionality
+    $('#piSearchInput').on('keyup', function() {
+        table.search(this.value).draw();
     });
     
     // View Quotation Modal
