@@ -30,7 +30,7 @@ if ($user_type === 'superadmin') {
                 <div class="col-lg-6 col-md-6 col-sm-6">
                     <div class="row">
                         <div class="col-lg-8 col-md-8 col-sm-8">
-                            <input type="text" name="" id="" class="form-control form-control-sm" placeholder="Search by Lead Number or Contact Name">
+                            <input type="text" name="searchInput" id="searchInput" class="form-control form-control-sm" placeholder="Search by Lead Number or Contact Name">
                         </div>
                         <div class="col-lg-4 col-md-4 col-sm-4 text-right">
                             <a href="add.php" class="btn btn-primary btn-sm">Add New Lead</a>

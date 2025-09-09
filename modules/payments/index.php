@@ -26,8 +26,9 @@ if (!isset($_SESSION['user_type']) || ($_SESSION['user_type'] !== 'accountsadmin
 
     <!-- Vendors with Payment Status Section -->
     <div class="card shadow mb-4 mt-4">
-        <div class="card-header py-3">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
             <h6 class="m-0 font-weight-bold text-primary">Vendors Payment Status</h6>
+            <input type="text" id="paymentSearchInput" class="form-control form-control-sm w-25" placeholder="Search Payments...">
         </div>
         <div class="card-body">
             <div class="table-responsive">
@@ -160,11 +161,16 @@ $(document).ready(function() {
                     if ($.fn.DataTable.isDataTable('#vendorsPaymentStatusTable')) {
                         $('#vendorsPaymentStatusTable').DataTable().destroy();
                     }
-                    $('#vendorsPaymentStatusTable').DataTable({
+                    var table = $('#vendorsPaymentStatusTable').DataTable({
                         order: [[0, 'desc']],
                         pageLength: 10,
                         lengthChange: false,
                         searching: false
+                    });
+                    
+                    // Custom search functionality
+                    $('#paymentSearchInput').off('keyup').on('keyup', function() {
+                        table.search(this.value).draw();
                     });
                 } else {
                     $('#vendorsPaymentStatusTable tbody').html('<tr><td colspan="9" class="text-center text-danger">Error loading payments.</td></tr>');

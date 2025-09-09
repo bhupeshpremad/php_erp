@@ -95,13 +95,10 @@ $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
             <h6 class="m-0 font-weight-bold text-primary">Purchase List</h6>
-                <form action="" method="GET" class="d-flex flex-wrap gap-2">
-                    <input type="text" name="search_po" class="form-control form-control-sm mb-2" style="max-width:180px;" placeholder="Search PO No." value="<?php echo htmlspecialchars($search_po); ?>">
-                    <input type="text" name="search_jci" class="form-control form-control-sm mb-2" style="max-width:180px;" placeholder="Search JCI No." value="<?php echo htmlspecialchars($search_jci); ?>">
-                    <input type="text" name="search_son" class="form-control form-control-sm mb-2" style="max-width:180px;" placeholder="Search Sell Order No." value="<?php echo htmlspecialchars($search_son); ?>">
-                    <button type="submit" class="btn btn-info btn-sm ms-2 mb-2 mx-2">Search</button>
-                    <a href="add.php" class="btn btn-primary btn-sm ms-2 mb-2">Add Purchase</a>
-                </form>
+            <div class="d-flex align-items-center gap-3">
+                <input type="text" id="purchaseSearchInput" class="form-control form-control-sm" placeholder="Search Purchase..." style="width: 250px;">
+                <a href="add.php" class="btn btn-primary btn-sm">Add Purchase</a>
+            </div>
         </div>
         <div class="card-body">
             <table class="table table-bordered" id="purchaseTable">
@@ -196,11 +193,16 @@ $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <script>
 var BASE_URL = '<?php echo BASE_URL; ?>';
 $(document).ready(function() {
-    $('#purchaseTable').DataTable({
+    var table = $('#purchaseTable').DataTable({
         order: [[0, 'desc']],
         pageLength: 10,
         lengthChange: false,
         searching: false
+    });
+    
+    // Custom search functionality
+    $('#purchaseSearchInput').on('keyup', function() {
+        table.search(this.value).draw();
     });
 
 
@@ -216,7 +218,51 @@ $(document).ready(function() {
         updateApprovalStatus(purchaseId, 'send_for_approval');
     });
 
-    $(document).on('click', '.approve-supplier-btn', function() {
+    $(document).on('click', '.approve-btn', function() {
+        var purchaseId = $(this).data('id');
+        updateApprovalStatus(purchaseId, 'approved');
+    });
+});
+
+function showDetails(purchaseId) {
+    $('#detailsModal').modal('show');
+    $('#detailsModalBody').html('<div class="text-center"><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...</div>');
+    
+    $.ajax({
+        url: BASE_URL + 'modules/purchase/get_details.php',
+        type: 'GET',
+        data: { id: purchaseId },
+        success: function(response) {
+            $('#detailsModalBody').html(response);
+        },
+        error: function() {
+            $('#detailsModalBody').html('<div class="alert alert-danger">Error loading details</div>');
+        }
+    });
+}
+
+function updateApprovalStatus(purchaseId, status) {
+    $.ajax({
+        url: BASE_URL + 'modules/purchase/update_approval.php',
+        type: 'POST',
+        data: {
+            purchase_id: purchaseId,
+            status: status
+        },
+        success: function(response) {
+            var result = JSON.parse(response);
+            if (result.success) {
+                toastr.success(result.message);
+                location.reload();
+            } else {
+                toastr.error(result.message);
+            }
+        },
+        error: function() {
+            toastr.error('Error updating approval status');
+        }
+    });
+}rove-supplier-btn', function() {
         var supplierId = $(this).data('supplier-id');
         var purchaseId = $(this).data('purchase-id');
         if (confirm('Are you sure you want to approve this supplier?')) {

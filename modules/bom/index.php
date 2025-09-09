@@ -34,8 +34,8 @@ $bom_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
             <h6 class="m-0 font-weight-bold text-primary">Bill Of Material List</h6>
-            <div>
-                <a href="migrate.php" class="btn btn-info btn-sm">Setup Database</a>
+            <div class="d-flex align-items-center gap-3">
+                <input type="text" id="bomSearchInput" class="form-control form-control-sm" placeholder="Search BOM..." style="width: 250px;">
                 <a href="add.php" class="btn btn-primary btn-sm">Add New BOM</a>
             </div>
         </div>
@@ -239,11 +239,16 @@ $bom_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <script>
 $(document).ready(function() {
-    $('#bomTable').DataTable({
+    var table = $('#bomTable').DataTable({
         order: [[0, 'desc']],
         pageLength: 10,
         lengthChange: false,
         searching: false
+    });
+    
+    // Custom search functionality
+    $('#bomSearchInput').on('keyup', function() {
+        table.search(this.value).draw();
     });
 
     document.querySelectorAll('.view-items-btn').forEach(function(btn) {

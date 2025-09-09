@@ -168,13 +168,19 @@ try {
 $(document).ready(function() {
     // Check if DataTable is already initialized
     if (!$.fn.DataTable.isDataTable('#quotationsTable')) {
-        $('#quotationsTable').DataTable({
+        var table = $('#quotationsTable').DataTable({
             order: [[0, 'desc']],
             pageLength: 10,
             lengthChange: false,
             searching: false
         });
     }
+    
+    // Custom search functionality
+    $('#searchQuotationInput').on('keyup', function() {
+        var table = $('#quotationsTable').DataTable();
+        table.search(this.value).draw();
+    });
     
     // Approve quotation
     $('.approveBtn').on('click', function() {
