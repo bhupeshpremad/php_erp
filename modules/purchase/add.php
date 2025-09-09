@@ -729,8 +729,17 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
             // Action column with Save and Delete buttons
             var actionTd = '<td>';
             actionTd += '<button type="button" class="btn btn-primary btn-sm saveRowBtn" ' + inputDisabled + '>Save</button>';
+            
+            // Debug log
+            console.log('Row debug:', {
+                isSuperAdmin: isSuperAdmin,
+                hasExistingItem: !!existingItem,
+                existingItemId: existingItem ? existingItem.id : 'none',
+                supplierName: supplierName
+            });
+            
             if (isSuperAdmin && existingItem && existingItem.id) {
-                actionTd += ' <button type="button" class="btn btn-danger btn-sm ms-1 deleteRowBtn" data-row-id="' + existingItem.id + '" data-supplier="' + (existingItem.supplier_name || '') + '" data-product="' + (existingItem.product_name || '') + '">Del</button>';
+                actionTd += ' <button type="button" class="btn btn-danger btn-sm deleteRowBtn" data-row-id="' + existingItem.id + '" data-supplier="' + supplierName + '" data-product="' + item.product_name + '">Del</button>';
             }
             actionTd += '</td>';
             tr.append(actionTd);
