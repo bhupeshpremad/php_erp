@@ -724,7 +724,6 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
                 console.log('Match result:', existingItem ? 'FOUND ID: ' + existingItem.id : 'NOT FOUND');
             }
             console.log('=== END MATCHING DEBUG ===');
-            }
 
             var supplierName = existingItem ? (existingItem.supplier_name || '').toString().replace(/"/g, '&quot;') : '';
             var assignedQty = existingItem ? existingItem.assigned_quantity : '0';
