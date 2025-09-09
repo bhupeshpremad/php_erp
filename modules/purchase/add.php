@@ -194,11 +194,14 @@ try {
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <!-- Purchase Editable JS -->
-<script src="js/purchase-editable.js"></script>
-<script src="js/fix-duplicate-display.js"></script>
-<script src="fix_individual_save.js"></script>
+<script src="js/purchase-editable.js?v=<?php echo time(); ?>"></script>
+<script src="js/fix-duplicate-display.js?v=<?php echo time(); ?>"></script>
+<script src="fix_individual_save.js?v=<?php echo time(); ?>"></script>
 
 <script>
+// Force cache refresh - Version: <?php echo date('Y-m-d H:i:s'); ?>
+console.log('Script loaded at: <?php echo date('Y-m-d H:i:s'); ?>');
+
 // Global variables for individual row save
 window.isSuperAdmin = <?php echo json_encode($is_superadmin); ?>;
 window.existingPurchaseItems = <?php echo json_encode($purchase_items ?? []); ?>;

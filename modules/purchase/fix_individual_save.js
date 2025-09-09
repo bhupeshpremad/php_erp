@@ -49,7 +49,11 @@ function saveIndividualRow(targetRow) {
         uniqueId = matchingItem.id;
     }
 
-    // Create single item array
+    // Get BOM quantity and row serial for unique identification
+    var bom_quantity = targetRow.find('.bomQuantityInput').val() || '0';
+    var row_serial = targetRow.find('td').eq(1).text().trim();
+    
+    // Create single item array with unique row identification
     var items_to_save = [{
         rowIndex: 0, // Single row index
         uniqueId: uniqueId,
@@ -59,12 +63,16 @@ function saveIndividualRow(targetRow) {
         job_card_number: job_card_number_from_table,
         assigned_quantity: assigned_quantity,
         price: price,
+        bom_quantity: bom_quantity, // Add BOM quantity for precise matching
+        row_serial: row_serial, // Add row serial for identification
         total: (parseFloat(assigned_quantity) * parseFloat(price)).toFixed(2),
         invoice_number: invoice_number,
         builty_number: builty_number,
         existing_invoice_image: existing_invoice_image,
         existing_builty_image: existing_builty_image
     }];
+    
+    console.log('Individual save data:', items_to_save[0]);
 
     // Prepare FormData
     var formData = new FormData();
