@@ -74,11 +74,11 @@ try {
     // Insert/Update purchase_items
     $stmt_check_item = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ? AND assigned_quantity = ? AND price = ?");
     $stmt_precise_match = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ? AND assigned_quantity = ? AND price = ? LIMIT 1");
-    $stmt_insert_item = $conn->prepare("INSERT INTO purchase_items (purchase_main_id, supplier_name, product_type, product_name, job_card_number, assigned_quantity, price, total, date, invoice_number, amount, invoice_image, builty_number, builty_image, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+    $stmt_insert_item = $conn->prepare("INSERT INTO purchase_items (purchase_main_id, supplier_name, product_type, product_name, job_card_number, assigned_quantity, price, total, date, invoice_number, amount, invoice_image, builty_number, builty_image, length_ft, width_ft, thickness_inch, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
 
     // Define update statements based on superadmin status
-    $stmt_update_item_superadmin = $conn->prepare("UPDATE purchase_items SET assigned_quantity = ?, price = ?, total = ?, date = ?, invoice_number = ?, amount = ?, invoice_image = ?, builty_number = ?, builty_image = ?, updated_at = NOW() WHERE id = ?");
-    $stmt_update_item_regular = $conn->prepare("UPDATE purchase_items SET assigned_quantity = ?, price = ?, total = ?, date = ?, invoice_number = ?, amount = ?, invoice_image = ?, builty_number = ?, builty_image = ?, updated_at = NOW() WHERE id = ? AND (invoice_number IS NULL OR invoice_number = '')");
+    $stmt_update_item_superadmin = $conn->prepare("UPDATE purchase_items SET assigned_quantity = ?, price = ?, total = ?, date = ?, invoice_number = ?, amount = ?, invoice_image = ?, builty_number = ?, builty_image = ?, length_ft = ?, width_ft = ?, thickness_inch = ?, updated_at = NOW() WHERE id = ?");
+    $stmt_update_item_regular = $conn->prepare("UPDATE purchase_items SET assigned_quantity = ?, price = ?, total = ?, date = ?, invoice_number = ?, amount = ?, invoice_image = ?, builty_number = ?, builty_image = ?, length_ft = ?, width_ft = ?, thickness_inch = ?, updated_at = NOW() WHERE id = ? AND (invoice_number IS NULL OR invoice_number = '')");
     $stmt_update_image_only = $conn->prepare("UPDATE purchase_items SET invoice_image = ?, builty_image = ?, updated_at = NOW() WHERE id = ?");
 
     foreach ($items as $item_index => $item_data) {
@@ -94,6 +94,9 @@ try {
         $builty_number = $item_data['builty_number'] ?? null;
         $bom_quantity = floatval($item_data['bom_quantity'] ?? 0);
         $unique_id = $item_data['uniqueId'] ?? null;
+        $length_ft = floatval($item_data['length_ft'] ?? 0);
+        $width_ft = floatval($item_data['width_ft'] ?? 0);
+        $thickness_inch = floatval($item_data['thickness_inch'] ?? 0);
 
         $existing_invoice_image = $item_data['existing_invoice_image'] ?? null;
         $existing_builty_image = $item_data['existing_builty_image'] ?? null;
@@ -185,6 +188,9 @@ try {
                     $invoice_image_name,
                     $builty_number,
                     $builty_image_name,
+                    $length_ft,
+                    $width_ft,
+                    $thickness_inch,
                     $existing_item['id']
                 ]);
                 error_log("Superadmin update completed for ID: {$existing_item['id']}");
@@ -201,6 +207,9 @@ try {
                         $invoice_image_name,
                         $builty_number,
                         $builty_image_name,
+                        $length_ft,
+                        $width_ft,
+                        $thickness_inch,
                         $existing_item['id']
                     ]);
                     error_log("Regular user update completed for ID: {$existing_item['id']}");
@@ -231,7 +240,10 @@ try {
                 $assigned_quantity * $price, // Assuming amount is total
                 $invoice_image_name,
                 $builty_number,
-                $builty_image_name
+                $builty_image_name,
+                $length_ft,
+                $width_ft,
+                $thickness_inch
             ]);
             $new_id = $conn->lastInsertId();
             error_log("New item inserted with ID: {$new_id}");
