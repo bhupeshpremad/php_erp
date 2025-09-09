@@ -72,7 +72,8 @@ try {
     }
 
     // Insert/Update purchase_items
-    $stmt_check_item = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ? AND assigned_quantity = ? AND price = ? AND length_ft = ? AND width_ft = ? AND thickness_inch = ? LIMIT 1");
+    $stmt_check_item_wood = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ? AND assigned_quantity = ? AND price = ? AND length_ft = ? AND width_ft = ? AND thickness_inch = ? LIMIT 1");
+    $stmt_check_item_non_wood = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ? AND assigned_quantity = ? AND price = ? AND date = ? LIMIT 1");
     $stmt_precise_match = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ? AND assigned_quantity = ? AND price = ? LIMIT 1");
     $stmt_insert_item = $conn->prepare("INSERT INTO purchase_items (purchase_main_id, supplier_name, product_type, product_name, job_card_number, assigned_quantity, price, total, date, invoice_number, amount, invoice_image, builty_number, builty_image, length_ft, width_ft, thickness_inch, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
 
@@ -105,24 +106,40 @@ try {
         $builty_image_name = $existing_builty_image;
 
         // Handle invoice image upload
-        if (isset($_FILES['invoice_image_' . $item_index]) && $_FILES['invoice_image_' . $item_index]['error'] === UPLOAD_ERR_OK) {
-            $file_tmp_path = $_FILES['invoice_image_' . $item_index]['tmp_name'];
-            $file_extension = pathinfo($_FILES['invoice_image_' . $item_index]['name'], PATHINFO_EXTENSION);
-            $new_file_name = uniqid('invoice_') . '.' . $file_extension;
-            $dest_path = $invoice_upload_dir . $new_file_name;
-            if (move_uploaded_file($file_tmp_path, $dest_path)) {
-                $invoice_image_name = $new_file_name;
+        if (isset($_FILES['invoice_image_' . $item_index])) {
+            $file_error = $_FILES['invoice_image_' . $item_index]['error'];
+            if ($file_error === UPLOAD_ERR_OK) {
+                $file_tmp_path = $_FILES['invoice_image_' . $item_index]['tmp_name'];
+                $file_extension = pathinfo($_FILES['invoice_image_' . $item_index]['name'], PATHINFO_EXTENSION);
+                $new_file_name = uniqid('invoice_') . '.' . $file_extension;
+                $dest_path = $invoice_upload_dir . $new_file_name;
+                if (move_uploaded_file($file_tmp_path, $dest_path)) {
+                    $invoice_image_name = $new_file_name;
+                    error_log("Invoice image uploaded successfully: {$new_file_name}");
+                } else {
+                    error_log("Failed to move invoice image to: {$dest_path}");
+                }
+            } else {
+                error_log("Invoice image upload error: {$file_error}");
             }
         }
 
         // Handle builty image upload
-        if (isset($_FILES['builty_image_' . $item_index]) && $_FILES['builty_image_' . $item_index]['error'] === UPLOAD_ERR_OK) {
-            $file_tmp_path = $_FILES['builty_image_' . $item_index]['tmp_name'];
-            $file_extension = pathinfo($_FILES['builty_image_' . $item_index]['name'], PATHINFO_EXTENSION);
-            $new_file_name = uniqid('builty_') . '.' . $file_extension;
-            $dest_path = $builty_upload_dir . $new_file_name;
-            if (move_uploaded_file($file_tmp_path, $dest_path)) {
-                $builty_image_name = $new_file_name;
+        if (isset($_FILES['builty_image_' . $item_index])) {
+            $file_error = $_FILES['builty_image_' . $item_index]['error'];
+            if ($file_error === UPLOAD_ERR_OK) {
+                $file_tmp_path = $_FILES['builty_image_' . $item_index]['tmp_name'];
+                $file_extension = pathinfo($_FILES['builty_image_' . $item_index]['name'], PATHINFO_EXTENSION);
+                $new_file_name = uniqid('builty_') . '.' . $file_extension;
+                $dest_path = $builty_upload_dir . $new_file_name;
+                if (move_uploaded_file($file_tmp_path, $dest_path)) {
+                    $builty_image_name = $new_file_name;
+                    error_log("Builty image uploaded successfully: {$new_file_name}");
+                } else {
+                    error_log("Failed to move builty image to: {$dest_path}");
+                }
+            } else {
+                error_log("Builty image upload error: {$file_error}");
             }
         }
         
@@ -145,7 +162,7 @@ try {
             
             if ($bom_quantity > 0) {
                 // Use BOM quantity for precise row identification
-                $stmt_bom_match = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ? AND price = ? AND (assigned_quantity = ? OR ABS(assigned_quantity - ?) < 0.001) AND length_ft = ? AND width_ft = ? AND thickness_inch = ? LIMIT 1");
+                $stmt_bom_match = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND supplier_name = ? AND product_type = ? AND product_name = ? AND job_card_number = ? AND price = ? AND (assigned_quantity = ? OR ABS(assigned_quantity - ?) < 0.001) AND length_ft = ? AND width_ft = ? AND thickness_inch = ? AND date = ? LIMIT 1");
                 $stmt_bom_match->execute([
                     $purchase_main_id,
                     $supplier_name,
@@ -157,26 +174,42 @@ try {
                     $assigned_quantity,
                     $length_ft,
                     $width_ft,
-                    $thickness_inch
+                    $thickness_inch,
+                    $date
                 ]);
                 $existing_item = $stmt_bom_match->fetch(PDO::FETCH_ASSOC);
                 error_log("BOM match result: " . ($existing_item ? "Found ID {$existing_item['id']}" : "Not found"));
             } else {
-                // Fallback to basic matching
-                $stmt_check_item->execute([
-                    $purchase_main_id,
-                    $supplier_name,
-                    $product_type,
-                    $product_name,
-                    $job_card_number,
-                    $assigned_quantity,
-                    $price,
-                    $length_ft,
-                    $width_ft,
-                    $thickness_inch
-                ]);
-                $existing_item = $stmt_check_item->fetch(PDO::FETCH_ASSOC);
-                error_log("Basic match result: " . ($existing_item ? "Found ID {$existing_item['id']}" : "Not found"));
+                // Fallback to basic matching - use different queries for wood vs non-wood
+                if (strtolower($product_type) === 'wood' || strpos(strtolower($product_type), 'wood') !== false) {
+                    $stmt_check_item_wood->execute([
+                        $purchase_main_id,
+                        $supplier_name,
+                        $product_type,
+                        $product_name,
+                        $job_card_number,
+                        $assigned_quantity,
+                        $price,
+                        $length_ft,
+                        $width_ft,
+                        $thickness_inch
+                    ]);
+                    $existing_item = $stmt_check_item_wood->fetch(PDO::FETCH_ASSOC);
+                    error_log("Wood match result: " . ($existing_item ? "Found ID {$existing_item['id']}" : "Not found"));
+                } else {
+                    $stmt_check_item_non_wood->execute([
+                        $purchase_main_id,
+                        $supplier_name,
+                        $product_type,
+                        $product_name,
+                        $job_card_number,
+                        $assigned_quantity,
+                        $price,
+                        $date
+                    ]);
+                    $existing_item = $stmt_check_item_non_wood->fetch(PDO::FETCH_ASSOC);
+                    error_log("Non-wood match result: " . ($existing_item ? "Found ID {$existing_item['id']}" : "Not found"));
+                }
             }
         }
 
