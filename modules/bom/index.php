@@ -22,7 +22,7 @@ if ($user_type === 'superadmin') {
 
 global $conn;
 
-$sql = "SELECT *, CASE WHEN jci_assigned = 1 THEN 'Assigned' ELSE 'Available' END as status FROM bom_main ORDER BY created_at DESC";
+$sql = "SELECT *, CASE WHEN jci_assigned = 1 THEN 'Assigned' ELSE 'Available' END as status FROM bom_main ORDER BY id DESC";
 $stmt = $conn->prepare($sql);
 $stmt->execute();
 $bom_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -44,7 +44,7 @@ $bom_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <table class="table table-bordered table-striped" id="bomTable" width="100%" cellspacing="0">
                     <thead>
                         <tr>
-                            <th>Serial No</th>
+                            <th>Sl No</th>
                             <th>Bill Of Material Number</th>
                             <th>Costing Sheet Number</th>
                             <th>Client Name</th>

@@ -56,7 +56,7 @@ try {
                 <table id="piTable" class="table table-bordered table-striped">
                     <thead>
                         <tr>
-                            <th>Sr No</th>
+                            <th>Sl No</th>
                             <th>PI Number</th>
                             <th>Quotation Number</th>
                             <th>Status</th>

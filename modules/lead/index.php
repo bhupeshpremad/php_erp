@@ -44,7 +44,7 @@ if ($user_type === 'superadmin') {
                 <table class="table table-bordered table-striped" id="leadsTable">
                     <thead>
                         <tr>
-                            <th>ID</th>
+                            <th>Sl No</th>
                             <th>Lead Number</th>
                             <th>Contact Name</th>
                             <th>Contact Email</th>
@@ -159,7 +159,8 @@ $(document).ready(function() {
             order: [[0, 'desc']],
             pageLength: 10,
             lengthChange: false,
-            searching: true
+            searching: true,
+            dom: 'rt<"bottom"p>'
         });
     }
 

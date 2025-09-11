@@ -22,7 +22,7 @@ $sql = "SELECT j.id, j.jci_number, j.created_by, j.jci_date, p.po_number, p.sell
         FROM jci_main j
         LEFT JOIN po_main p ON j.po_id = p.id
         LEFT JOIN bom_main b ON j.bom_id = b.id
-        ORDER BY j.created_at DESC";
+        ORDER BY j.id DESC";
 $stmt = $conn->prepare($sql);
 $stmt->execute();
 $jci_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -44,13 +44,13 @@ $jci_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <table class="table table-bordered table-striped" id="jciTable" width="100%" cellspacing="0">
                     <thead>
                         <tr>
-                            <th>ID</th>
+                            <th>Sl No</th>
                             <th>JCI Number</th>
                             <th>Sale Order Number</th>
                             <th>PO Number</th>
                             <th>BOM Number</th>
                             <th>Created By</th>
-                            <th>Job Card Date</th>
+                            <!-- <th>Job Card Date</th> -->
                             <th>Details</th>
                             <th>Action</th>
                         </tr>
@@ -64,7 +64,7 @@ $jci_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <td><?php echo htmlspecialchars($jci['po_number'] ?? 'N/A'); ?></td>
                             <td><?php echo htmlspecialchars($jci['bom_number'] ?? 'N/A'); ?></td>
                             <td><?php echo htmlspecialchars($jci['created_by']); ?></td>
-                            <td><?php echo htmlspecialchars($jci['jci_date']); ?></td>
+                            <!-- <td><?php echo htmlspecialchars($jci['jci_date']); ?></td> -->
                             <td>
                                 <button class="btn btn-info btn-sm view-items-btn" data-jci-id="<?php echo $jci['id']; ?>">View Details</button>
                             </td>

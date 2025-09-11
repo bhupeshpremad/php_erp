@@ -24,7 +24,7 @@ global $conn;
 $stmt = $conn->prepare("SELECT id, po_number, client_name, prepared_by, order_date, delivery_date, created_at, updated_at, status, is_locked, sell_order_number, jci_assigned, CASE WHEN jci_assigned = 1 THEN 'JCI Created' ELSE 'Available' END as jci_status
                         FROM po_main
                         WHERE status IN ('Approved', 'Locked')
-                        ORDER BY created_at DESC");
+                        ORDER BY id DESC");
 $stmt->execute();
 $so_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
@@ -43,15 +43,15 @@ $so_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <table class="table table-bordered table-striped" id="soTable" width="100%" cellspacing="0">
                     <thead>
                         <tr>
-                            <th>ID</th>
+                            <th>Sl No</th>
                             <th>SO Number</th>
                             <th>PO Number</th>
                             <th>Client Name</th>
                             <th>Prepared By</th>
                             <th>Order Date</th>
                             <th>Delivery Date</th>
-                            <th>Status</th>
-                            <th>JCI Status</th>
+                            <!-- <th>Status</th> -->
+                            <!-- <th>JCI Status</th> -->
                             <th>Item List</th>
                         </tr>
                     </thead>
@@ -65,7 +65,7 @@ $so_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <td><?php echo htmlspecialchars($so['prepared_by'] ?? ''); ?></td>
                             <td><?php echo htmlspecialchars($so['order_date'] ?? ''); ?></td>
                             <td><?php echo htmlspecialchars($so['delivery_date'] ?? ''); ?></td>
-                            <td>
+                            <!-- <td>
                                 <span class="badge
                                     <?php
                                         if ($so['status'] == 'Approved') echo 'bg-success';
@@ -74,8 +74,8 @@ $so_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     ?>">
                                     <?php echo htmlspecialchars($so['status'] ?? 'N/A'); ?>
                                 </span>
-                            </td>
-                            <td><span class="badge badge-<?php echo $so['jci_assigned'] ? 'warning' : 'success'; ?>"><?php echo $so['jci_status']; ?></span></td>
+                            </td> -->
+                            <!-- <td><span class="badge badge-<?php echo $so['jci_assigned'] ? 'warning' : 'success'; ?>"><?php echo $so['jci_status']; ?></span></td> -->
                             <td>
                                 <button class="btn btn-info btn-sm view-so-items-btn" data-so-id="<?php echo $so['id']; ?>">View Items</button>
                             </td>
@@ -134,7 +134,8 @@ $so_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
             order: [[0, 'desc']],
             pageLength: 10,
             lengthChange: false,
-            searching: true
+            searching: true,
+            dom: 'rt<"bottom"p>'
         });
         
         // Custom search functionality

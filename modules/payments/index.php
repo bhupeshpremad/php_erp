@@ -35,7 +35,7 @@ if (!isset($_SESSION['user_type']) || ($_SESSION['user_type'] !== 'accountsadmin
                 <table class="table table-bordered table-striped" id="vendorsPaymentStatusTable">
                     <thead>
                         <tr>
-                            <th>Sl Number</th>
+                            <th>Sl No</th>
                             <th>JCI Number</th>
                             <th>PO Number</th>
                             <th>SO Number</th>
