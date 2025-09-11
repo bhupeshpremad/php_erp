@@ -28,3 +28,63 @@ vendor/
 
 # Ignore node_modules if using npm
 node_modules/
+
+# Ignore environment/sensitive files
+.env
+
+# Ignore temp/runtime data and logs
+/tmp/
+tmp/
+*.bak
+*.old
+
+# Ignore SQL dumps (keep migrations SQL if any)
+*.sql
+!migrations/*.sql
+
+# Ignore test/debug artifacts and scratch files
+*__
+*.php__
+*.js__
+*.css__
+*.html__
+*debug*.*
+*test*.*
+*fix*.*
+*temp*.*
+*backup*.*
+
+# Ignore specific debug/test files
+verify_structure.php
+get_details.php
+check_*.php
+fix_*.php
+test_*.php
+debug_*.php
+setup_*.php
+run_*.php
+clean*.php
+final_*.php
+ultimate_*.php
+simple_*.php
+direct_*.php
+complete_*.php
+audit_*.php
+clear_*.php
+
+# Ignore SQL files (except migrations)
+*.sql
+!migrations/*.sql
+
+# Ignore uploaded test files
+uploads/*/
+!uploads/.gitkeep
+
+# Ignore local DB dumps placed at project root (explicit)
+/php_erp3_db_live.sql
+/u404997496_erp_u404997496.sql
+/php_erp3_db.sql
+/php_erp3_combined.sql
+
+# Ignore schema log outputs
+/tmp/schema_logs/

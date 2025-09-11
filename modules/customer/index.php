@@ -164,16 +164,17 @@ try {
 
 <script>
 $(document).ready(function() {
-    var table = $('#customersTable').DataTable({
+    var customersTable = $('#customersTable').DataTable({
         order: [[1, 'asc']],
         pageLength: 10,
         lengthChange: false,
-        searching: false
+        searching: true,
+        dom: 'rt<"bottom"p>'
     });
     
     // Custom search functionality
     $('#customerSearchInput').on('keyup', function() {
-        table.search(this.value).draw();
+        customersTable.search(this.value).draw();
     });
 
     // Load leads list in modal

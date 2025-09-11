@@ -57,10 +57,10 @@ try {
 
 // Get current user ID for filtering
 $current_user_id = $_SESSION['user_id'] ?? $_SESSION['admin_id'] ?? null;
+$user_type = $_SESSION['user_type'] ?? 'guest';
 
-// Add user filter to WHERE clauses (only if column exists and not superadmin)
-// Modified: Allow accountsadmin to see all purchase records, not just their own
-if ($has_created_by && $current_user_id && $_SESSION['user_type'] !== 'superadmin' && $_SESSION['user_type'] !== 'accountsadmin') {
+// Add user filter to WHERE clauses (only if column exists and not superadmin/accountsadmin)
+if ($has_created_by && $current_user_id && $user_type !== 'superadmin' && $user_type !== 'accountsadmin') {
     $whereClauses[] = 'p.created_by = :created_by';
     $params[':created_by'] = $current_user_id;
 }
@@ -70,26 +70,16 @@ if (count($whereClauses) > 0) {
     $whereSql = 'WHERE ' . implode(' AND ', $whereClauses);
 }
 
-// Main data query - include created_by only if column exists
+// Main data query
 $select_fields = "p.id, p.po_number, p.jci_number, p.sell_order_number, p.approval_status";
 if ($has_created_by) {
     $select_fields .= ", p.created_by";
 }
 
-// Modified query to handle NULL created_by values for accountsadmin and superadmin
-if ($_SESSION['user_type'] === 'superadmin' || $_SESSION['user_type'] === 'accountsadmin') {
-    // Show all records regardless of created_by value
-    $sql = "SELECT $select_fields 
-            FROM purchase_main p 
-            $whereSql 
-            ORDER BY p.id DESC";
-} else {
-    // For other users, apply the original filtering
-    $sql = "SELECT $select_fields 
-            FROM purchase_main p 
-            $whereSql 
-            ORDER BY p.id DESC";
-}
+$sql = "SELECT $select_fields
+        FROM purchase_main p
+        $whereSql
+        ORDER BY p.id DESC";
 
 $stmt = $conn->prepare($sql);
 
@@ -100,7 +90,9 @@ foreach ($params as $key => $value) {
 $stmt->execute();
 $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
+
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css"/>
+
 <div class="container-fluid">
     <?php include_once ROOT_DIR_PATH . 'include/inc/topbar.php'; ?>
     <div class="card shadow mb-4">
@@ -131,11 +123,6 @@ $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         foreach ($result as $row) {
                             $purchase_id = $row['id'];
                             
-                            // Fetch images for this purchase
-                            $stmt_images = $conn->prepare("SELECT invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ?");
-                            $stmt_images->execute([$purchase_id]);
-                            $images = $stmt_images->fetchAll(PDO::FETCH_ASSOC);
-                            
                             echo "<tr>";
                             echo "<td>" . $serial++ . "</td>";
                             echo "<td>" . htmlspecialchars($row['jci_number']) . "</td>";
@@ -163,17 +150,15 @@ $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             echo "</tr>";
                         }
                     } else {
-                        echo "<tr><td colspan='6' class='text-center'>No purchase records found.</td></tr>";
+                        echo "<tr><td colspan='7' class='text-center'>No purchase records found.</td></tr>";
                     }
                     ?>
                 </tbody>
             </table>
         </div>
-
     </div>
 </div>
 
-<!-- Details Modal -->
 <div class="modal fade" id="detailsModal" tabindex="-1" role="dialog" aria-labelledby="detailsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
@@ -204,21 +189,28 @@ $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <script>
 var BASE_URL = '<?php echo BASE_URL; ?>';
 $(document).ready(function() {
-    var table = $('#purchaseTable').DataTable({
+    var purchaseTable = $('#purchaseTable').DataTable({
         order: [[0, 'desc']],
         pageLength: 10,
         lengthChange: false,
-        searching: false
+        searching: true,
+        dom: 'rt<"bottom"p>'
     });
     
     // Custom search functionality
     $('#purchaseSearchInput').on('keyup', function() {
-        table.search(this.value).draw();
+        var searchValue = this.value;
+        purchaseTable.search(searchValue).draw();
+    });
+    
+    // Clear search when input is empty
+    $('#purchaseSearchInput').on('input', function() {
+        if (this.value === '') {
+            purchaseTable.search('').draw();
+        }
     });
 
-
-
-    $('.view-details-btn').click(function(e) {
+    $('#purchaseTable').on('click', '.view-details-btn', function(e) {
         e.preventDefault();
         var purchaseId = $(this).data('id');
         showDetails(purchaseId);
@@ -226,13 +218,39 @@ $(document).ready(function() {
 
     $('#purchaseTable').on('click', '.send-approval-btn', function() {
         var purchaseId = $(this).data('id');
-        updateApprovalStatus(purchaseId, 'send_for_approval');
+        updateApprovalStatus(purchaseId, 'sent_for_approval');
     });
 
+    // Event listener for the approve button inside the modal
     $(document).on('click', '.approve-btn', function() {
         var purchaseId = $(this).data('id');
         updateApprovalStatus(purchaseId, 'approved');
     });
+
+    $(document).on('click', '.approve-supplier-btn', function() {
+        var supplierId = $(this).data('supplier-id');
+        var purchaseId = $(this).data('purchase-id');
+        if (confirm('Are you sure you want to approve this supplier?')) {
+            $.ajax({
+                url: 'ajax_approve_supplier.php',
+                method: 'POST',
+                data: { supplier_id: supplierId, purchase_id: purchaseId },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        toastr.success(response.message);
+                        showDetails(purchaseId);
+                    } else {
+                        toastr.error(response.error || 'Error approving supplier.');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    toastr.error('AJAX error: ' + error);
+                }
+            });
+        }
+    });
+
 });
 
 function showDetails(purchaseId) {
@@ -273,79 +291,9 @@ function updateApprovalStatus(purchaseId, status) {
             toastr.error('Error updating approval status');
         }
     });
-}rove-supplier-btn', function() {
-        var supplierId = $(this).data('supplier-id');
-        var purchaseId = $(this).data('purchase-id');
-        if (confirm('Are you sure you want to approve this supplier?')) {
-            $.ajax({
-                url: 'ajax_approve_supplier.php',
-                method: 'POST',
-                data: { supplier_id: supplierId, purchase_id: purchaseId },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success) {
-                        toastr.success(response.message);
-                        showDetails(purchaseId);
-                    } else {
-                        toastr.error(response.error || 'Error approving supplier.');
-                    }
-                },
-                error: function(xhr, status, error) {
-                    toastr.error('AJAX error: ' + error);
-                }
-            });
-        }
-    });
-
-    function showDetails(purchaseId) {
-        $('#detailsModalLabel').text('Purchase Details (ID: ' + purchaseId + ')');
-        $('#detailsModalBody').html('<div class="text-center"><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...</div>');
-        $('#detailsModal').modal('show');
-        $.ajax({
-            url: 'fetch_supplier_details.php',
-            method: 'POST',
-            data: { purchase_id: purchaseId, user_type: '<?php echo $user_type; ?>' },
-            dataType: 'html',
-            cache: false,
-            success: function(data) {
-                $('#detailsModalBody').html(data);
-            },
-            error: function(xhr, status, error) {
-                $('#detailsModalBody').html('<div class="alert alert-danger">Failed to load details. Error: ' + (xhr.responseText || error) + '</div>');
-            }
-        });
-    }
-
-    function updateApprovalStatus(purchaseId, action) {
-        if (!confirm('Are you sure you want to ' + action.replace(/_/g, ' ') + ' this purchase?')) {
-            return;
-        }
-
-        $.ajax({
-            url: 'ajax_update_approval_status.php',
-            method: 'POST',
-            data: { purchase_id: purchaseId, action: action },
-            dataType: 'json',
-            success: function(response) {
-                if (response.success) {
-                    toastr.success(response.message);
-                    // Reload the page to reflect the new status
-                    location.reload();
-                } else {
-                    toastr.error(response.error || 'Error updating status.');
-                }
-            },
-            error: function(xhr, status, error) {
-                toastr.error('AJAX error: ' + error);
-            }
-        });
-    }
-
-
-
-
-});
+}
 </script>
+
 <?php
 include_once ROOT_DIR_PATH . 'include/inc/footer.php';
 ?>

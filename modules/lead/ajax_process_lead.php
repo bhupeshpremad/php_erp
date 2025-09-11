@@ -251,22 +251,57 @@ if ($action === 'get_next_lead_number') {
         $response['message'] = 'Missing lead ID or approval value.';
     }
 } elseif ($action === 'search_leads') {
-    $search = $_POST['search'] ?? '';
-    try {
-        $searchTerm = '%' . $search . '%';
-        $query = "SELECT * FROM leads WHERE lead_number LIKE :search OR contact_name LIKE :search OR contact_email LIKE :search OR country LIKE :search ORDER BY id DESC";
-        $stmt = $conn->prepare($query);
+    $draw = isset($_POST['draw']) ? (int)$_POST['draw'] : 1;
+    $start = isset($_POST['start']) ? (int)$_POST['start'] : 0;
+    $length = isset($_POST['length']) ? (int)$_POST['length'] : 10;
+    $searchValue = isset($_POST['search']['value']) ? trim($_POST['search']['value']) : '';
 
-        if ($stmt === false) {
-            throw new Exception('Failed to prepare statement for search_leads.');
+    try {
+        // Get total records without filter
+        $totalQuery = "SELECT COUNT(*) FROM leads";
+        $totalStmt = $conn->prepare($totalQuery);
+        $totalStmt->execute();
+        $recordsTotal = $totalStmt->fetchColumn();
+
+        $whereClauses = [];
+        $params = [];
+
+        if ($searchValue !== '') {
+            $searchWildcard = '%' . $searchValue . '%';
+            $whereClauses[] = "(lead_number LIKE :search OR contact_name LIKE :search OR contact_email LIKE :search OR country LIKE :search)";
+            $params[':search'] = $searchWildcard;
         }
 
-        $stmt->bindParam(':search', $searchTerm, PDO::PARAM_STR);
-        $stmt->execute();
-        $leads = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $whereSql = '';
+        if (count($whereClauses) > 0) {
+            $whereSql = 'WHERE ' . implode(' AND ', $whereClauses);
+        }
+
+        // Get filtered records count
+        $countQuery = "SELECT COUNT(*) FROM leads $whereSql";
+        $countStmt = $conn->prepare($countQuery);
+        foreach ($params as $key => $value) {
+            $countStmt->bindValue($key, $value);
+        }
+        $countStmt->execute();
+        $recordsFiltered = $countStmt->fetchColumn();
+
+        // Get paginated records
+        $dataQuery = "SELECT * FROM leads $whereSql ORDER BY id DESC LIMIT :offset, :limit";
+        $dataStmt = $conn->prepare($dataQuery);
+        foreach ($params as $key => $value) {
+            $dataStmt->bindValue($key, $value);
+        }
+        $dataStmt->bindValue(':offset', $start, PDO::PARAM_INT);
+        $dataStmt->bindValue(':limit', $length, PDO::PARAM_INT);
+        $dataStmt->execute();
+        $leads = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
 
         $response['success'] = true;
-        $response['leads'] = $leads;
+        $response['draw'] = $draw;
+        $response['recordsTotal'] = $recordsTotal;
+        $response['recordsFiltered'] = $recordsFiltered;
+        $response['data'] = $leads;
     } catch (Exception $e) {
         $response['message'] = 'Database error: ' . $e->getMessage();
     }

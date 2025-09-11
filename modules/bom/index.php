@@ -239,16 +239,25 @@ $bom_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <script>
 $(document).ready(function() {
-    var table = $('#bomTable').DataTable({
+    var bomTable = $('#bomTable').DataTable({
         order: [[0, 'desc']],
         pageLength: 10,
         lengthChange: false,
-        searching: false
+        searching: true,
+        dom: 'rt<"bottom"p>'
     });
     
     // Custom search functionality
     $('#bomSearchInput').on('keyup', function() {
-        table.search(this.value).draw();
+        var searchValue = this.value;
+        bomTable.search(searchValue).draw();
+    });
+    
+    // Clear search when input is empty
+    $('#bomSearchInput').on('input', function() {
+        if (this.value === '') {
+            bomTable.search('').draw();
+        }
     });
 
     document.querySelectorAll('.view-items-btn').forEach(function(btn) {

@@ -59,3 +59,17 @@ input[type=number]::-webkit-outer-spin-button {
 }
 
 /*  */
+
+.dataTables_paginate.paging_simple_numbers, .dataTables_info{
+    margin-top: 1rem;
+}
+
+.dataTables_paginate.paging_simple_numbers .paginate_button{
+    background: #2850c3 !important;
+    color: #FFFFFF !important;
+}
+
+.dataTables_paginate.paging_simple_numbers .paginate_button.disabled, .dataTables_paginate.paging_simple_numbers .paginate_button.current{
+    background: #e3e6f0 !important;
+    color: #858796 !important;
+}

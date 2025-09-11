@@ -14,18 +14,12 @@ if ($user_type === 'superadmin') {
 }
 
 try {
-    // Debug: Check which database we're connected to
-    $dbCheck = $conn->query("SELECT DATABASE() as db_name")->fetch();
-    echo "<!-- Connected to database: " . $dbCheck['db_name'] . " -->";
-    
     $sql = "SELECT id, lead_id, quotation_number, customer_name, customer_email, customer_phone, delivery_term, terms_of_delivery, approve, is_locked, quotation_image as excel_file FROM quotations ORDER BY id DESC";
     $stmt = $conn->prepare($sql);
     $stmt->execute();
     $quotations = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    echo "<!-- Found: " . count($quotations) . " quotations -->";
 } catch (PDOException $e) {
     $quotations = [];
-    echo "<!-- Error: " . $e->getMessage() . " -->";
 }
 ?> 
 
@@ -78,9 +72,6 @@ try {
                                 </td>
                                 <td style="white-space: nowrap;">
                                     <div class="btn-group">
-                                    <button type="button" class="btn btn-info btn-sm export-btn shareQuotationBtn mr-2" data-toggle="modal" data-target="#shareQuotationModal_<?php echo $quotation['id']; ?>" title="Share">
-                                        <i class="fas fa-share-alt"></i>
-                                    </button>
                                         <button type="button" class="btn btn-success btn-sm export-btn exportExcelBtn mr-2" data-id="<?php echo $quotation['id']; ?>" title="Export to Excel">
                                             <i class="fas fa-file-excel"></i>
                                         </button>
@@ -90,62 +81,22 @@ try {
                                     </div>
                                 </td>
                                 <td style="white-space: nowrap;">
-                                    <?php
-                                        $canEdit = ($quotation['approve'] != 1) || ($user_type === 'superadmin');
-                                        $editTitle = $canEdit ? 'Edit' : 'Editing disabled for approved quotation';
-                                        $editClass = $user_type === 'superadmin' && ($quotation['approve'] == 1) ? 'btn-warning' : 'btn-primary';
-                                    ?>
-                                    <button class="btn <?php echo $editClass; ?> editQuotationBtn" data-quotation-id="<?php echo $quotation['id']; ?>" title="<?php echo $editTitle; ?>" style="color:#ffffff;" <?php echo $canEdit ? '' : 'disabled style="pointer-events:none; opacity:0.6;"'; ?>><i class="fas fa-edit" style="color:#ffffff;"></i></button>
+                                    <button class="btn btn-primary editQuotationBtn" data-quotation-id="<?php echo $quotation['id']; ?>" title="Edit" style="color:#ffffff;"><i class="fas fa-edit" style="color:#ffffff;"></i></button>
                                     <?php
                                     $approveClass = (($quotation['approve'] ?? 0) == 1) ? 'btn-success' : 'btn-warning';
                                     $approveText = (($quotation['approve'] ?? 0) == 1) ? 'Approved' : 'Approve';
                                     ?>
                                     <button class="btn <?php echo $approveClass; ?> text-capitalize approveBtn" style="padding: 0.375rem;" data-quotation-id="<?php echo $quotation['id']; ?>" title="<?php echo $approveText; ?>" <?php echo ($quotation['approve'] == 1) ? 'disabled' : ''; ?>><?php echo $approveText; ?></button>
-                                    <?php
-                                        $isLocked = (int)($quotation['is_locked'] ?? 0) === 1;
-                                        $isApproved = (int)($quotation['approve'] ?? 0) === 1;
-                                        if (!$isLocked) {
-                                            $lockDisabled = !$isApproved ? 'disabled' : '';
-                                            $lockTitle = $isApproved ? 'Lock' : 'Lock (disabled until approved)';
-                                            echo '<button class="btn btn-secondary bg-dark lockBtn" title="' . $lockTitle . '" style="padding: 0.375rem; margin-left: 5px;" data-quotation-id="' . (int)$quotation['id'] . '" ' . $lockDisabled . '><i class="fas fa-lock-open"></i></button>';
-                                        } else {
-                                            if ($user_type === 'superadmin') {
-                                                echo '<button class="btn btn-dark unlockQuotationBtn" title="Unlock" style="padding: 0.375rem; margin-left: 5px;" data-quotation-id="' . (int)$quotation['id'] . '"><i class="fas fa-unlock"></i></button>';
-                                            } else {
-                                                echo '<button class="btn btn-secondary bg-dark" title="Locked" style="padding: 0.375rem; margin-left: 5px;" disabled><i class="fas fa-lock"></i></button>';
-                                            }
-                                        }
-                                    ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
-    </tbody>
+                    </tbody>
 </table>
 </div>
 
 <?php include_once ROOT_DIR_PATH . 'include/inc/footer.php'; ?>
 
-<?php foreach ($quotations as $quotation) : ?>
-<div class="modal fade" id="lockQuotationModal_<?php echo $quotation['id']; ?>" tabindex="-1" role="dialog" aria-labelledby="lockQuotationModalLabel_<?php echo $quotation['id']; ?>">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="lockQuotationModalLabel_<?php echo $quotation['id']; ?>">Lock Quotation</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="$('#lockQuotationModal_<?php echo $quotation['id']; ?>').modal('hide')">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to lock this quotation? Once locked, it cannot be edited or approved.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#lockQuotationModal_<?php echo $quotation['id']; ?>').modal('hide')">Cancel</button>
-                <button type="button" class="btn btn-primary confirmLockBtn" data-quotation-id="<?php echo $quotation['id']; ?>">Lock</button>
-            </div>
-        </div>
-    </div>
-</div>
-<?php endforeach; ?>
+<!-- Lock modals will be generated dynamically -->
         
     
     </div>
@@ -166,27 +117,22 @@ try {
 
 <script>
 $(document).ready(function() {
-    // Check if DataTable is already initialized
-    if (!$.fn.DataTable.isDataTable('#quotationsTable')) {
-        var table = $('#quotationsTable').DataTable({
-            order: [[0, 'desc']],
-            pageLength: 10,
-            lengthChange: false,
-            searching: false
-        });
-    }
-    
-    // Custom search functionality
+    var quotationsTable = $('#quotationsTable').DataTable({
+        order: [[0, 'desc']],
+        pageLength: 10,
+        lengthChange: false,
+        searching: true
+    });
+
     $('#searchQuotationInput').on('keyup', function() {
-        var table = $('#quotationsTable').DataTable();
-        table.search(this.value).draw();
+        quotationsTable.search(this.value).draw();
     });
     
     // Approve quotation
-    $('.approveBtn').on('click', function() {
+    $(document).on('click', '.approveBtn', function() {
         var quotationId = $(this).data('quotation-id');
         var button = $(this);
-        
+
         if (confirm('Are you sure you want to approve this quotation?')) {
             $.ajax({
                 url: '<?php echo BASE_URL; ?>modules/quotation/ajax_update_quotation_status.php',
@@ -202,6 +148,7 @@ $(document).ready(function() {
                         button.removeClass('btn-warning').addClass('btn-success').text('Approved').prop('disabled', true);
                         // Enable lock button
                         button.siblings('.lockBtn').prop('disabled', false);
+                        location.reload();
                     } else {
                         showToast('Error: ' + response.message, false);
                     }
@@ -269,26 +216,26 @@ $(document).ready(function() {
     });
     
     // Edit quotation
-    $('.editQuotationBtn').on('click', function() {
+    $(document).on('click', '.editQuotationBtn', function() {
         var quotationId = $(this).data('quotation-id');
         window.location.href = 'add.php?id=' + quotationId;
     });
     
     // Export Excel
-    $('.exportExcelBtn').on('click', function() {
+    $(document).on('click', '.exportExcelBtn', function() {
         var quotationId = $(this).data('id');
         window.open('<?php echo BASE_URL; ?>modules/quotation/export_quotation_excel.php?id=' + quotationId, '_blank');
     });
     
     // Export PDF
-    $('.exportPdfBtn').on('click', function() {
+    $(document).on('click', '.exportPdfBtn', function() {
         var quotationId = $(this).data('id');
         window.open('<?php echo BASE_URL; ?>modules/quotation/export_quotation_pdf.php?id=' + quotationId, '_blank');
     });
     
     // View Status
     var currentQuotationId = null;
-    $('.viewStatusBtn').on('click', function() {
+    $(document).on('click', '.viewStatusBtn', function() {
         currentQuotationId = $(this).data('quotation-id');
         $('#viewStatusModal').modal('show');
         loadStatusHistory(currentQuotationId);
@@ -395,27 +342,7 @@ function loadStatusHistory(quotationId) {
     </div>
   </div>
 </div>
-<?php foreach ($quotations as $quotation) : ?>
-<div class="modal fade" id="confirmSendEmailModal_<?php echo $quotation['id']; ?>" tabindex="-1" role="dialog" aria-labelledby="confirmSendEmailModalLabel_<?php echo $quotation['id']; ?>" aria-hidden="true">
-    <div class="modal-dialog modal-sm" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="confirmSendEmailModalLabel_<?php echo $quotation['id']; ?>">Send Email Confirmation</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <p>Do you want to send email for Quotation - <?php echo htmlspecialchars($quotation['quotation_number']); ?>?</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary confirmSendEmailBtn" data-quotation-id="<?php echo $quotation['id']; ?>">Yes</button>
-            </div>
-        </div>
-    </div>
-</div>
-<?php endforeach; ?>
+<!-- Email modals will be generated dynamically -->
 
 <div aria-live="polite" aria-atomic="true" style="position: fixed; top: 1rem; right: 1rem; min-height: 200px; z-index: 1080;">
     <div id="toastContainer" style="position: absolute; top: 0; right: 0;"></div>

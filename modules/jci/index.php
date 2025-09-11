@@ -145,16 +145,25 @@ $jci_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <script>
 $(document).ready(function() {
-    var table = $('#jciTable').DataTable({
+    var jciTable = $('#jciTable').DataTable({
         order: [[0, 'desc']],
         pageLength: 10,
         lengthChange: false,
-        searching: false
+        searching: true,
+        dom: 'rt<"bottom"p>'
     });
     
     // Custom search functionality
     $('#jciSearchInput').on('keyup', function() {
-        table.search(this.value).draw();
+        var searchValue = this.value;
+        jciTable.search(searchValue).draw();
+    });
+    
+    // Clear search when input is empty
+    $('#jciSearchInput').on('input', function() {
+        if (this.value === '') {
+            jciTable.search('').draw();
+        }
     });
 
     $(document).on('click', '.view-items-btn', function() {
