@@ -21,7 +21,7 @@ if ($user_type === 'superadmin') {
 
 global $conn;
 
-$stmt = $conn->prepare("SELECT id, po_number, client_name, prepared_by, created_at, updated_at, status, is_locked, jci_assigned, CASE WHEN jci_assigned = 1 THEN 'JCI Created' ELSE 'Available' END as jci_status FROM po_main ORDER BY created_at DESC");
+$stmt = $conn->prepare("SELECT id, po_number, client_name, prepared_by, created_at, updated_at, status, is_locked, jci_assigned, CASE WHEN jci_assigned = 1 THEN 'JCI Created' ELSE 'Available' END as jci_status FROM po_main ORDER BY id DESC");
 $stmt->execute();
 $po_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
@@ -41,11 +41,11 @@ $po_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <table class="table table-bordered table-striped" id="poTable" width="100%" cellspacing="0">
                     <thead>
                         <tr>
-                            <th>ID</th>
+                            <th>Sl No</th>
                             <th>PO Number</th>
                             <th>Client Name</th>
                             <th>Prepared By</th>
-                            <th>Created At</th>
+                            <!-- <th>Created At</th> -->
                             <th>Updated At</th>
                             <th>JCI Status</th>
                             <th>Item Details</th>
@@ -59,15 +59,17 @@ $po_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <td><?php echo htmlspecialchars($po['po_number']); ?></td>
                             <td><?php echo htmlspecialchars($po['client_name'] ?? ''); ?></td>
                             <td><?php echo htmlspecialchars($po['prepared_by'] ?? ''); ?></td>
-                            <td><?php echo htmlspecialchars($po['created_at'] ?? ''); ?></td>
-                            <td><?php echo htmlspecialchars($po['updated_at'] ?? ''); ?></td>
+                            <!-- <td><?php echo htmlspecialchars($po['created_at'] ?? ''); ?></td> -->
+                            <!-- <td><?php echo htmlspecialchars($po['updated_at'] ?? ''); ?></td> -->
                             <td><span class="badge badge-<?php echo $po['jci_assigned'] ? 'warning' : 'success'; ?>"><?php echo $po['jci_status']; ?></span></td>
                             <td>
                                 <button class="btn btn-info btn-sm view-items-btn" data-po-id="<?php echo $po['id']; ?>">View Items</button>
                             </td>
                             <td class="d-flex gap-2">
                                 <a href="add.php?id=<?php echo $po['id']; ?>" class="btn btn-sm btn-primary">Edit</a>
-                                <a href="generate_pdf.php?po_id=<?php echo $po['id']; ?>" class="btn btn-sm btn-success" target="_blank">PDFxx</a>
+                                <a href="generate_pdf.php?po_id=<?php echo $po['id']; ?>" class="btn btn-sm btn-success" target="_blank">PDF</a>
+                            </td>
+                            <td>
                                 <?php if ($po['status'] != 'Approved'): ?>
                                     <button class="btn btn-sm btn-success approve-po-btn" data-po-id="<?php echo $po['id']; ?>">Approve</button>
                                 <?php endif; ?>
@@ -129,7 +131,8 @@ $(document).ready(function () {
         order: [[0, 'desc']],
         pageLength: 10,
         lengthChange: false,
-        searching: true
+        searching: true,
+        dom: 'rt<"bottom"p>'
     });
     
     // Custom search functionality

@@ -107,7 +107,7 @@ $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <table class="table table-bordered" id="purchaseTable">
                 <thead>
                     <tr>
-                        <th>Serial Number</th>
+                        <th>Sl No</th>
                         <th>JCI Number</th>
                         <th>Sell Order Number</th>
                         <th>PO Number</th>

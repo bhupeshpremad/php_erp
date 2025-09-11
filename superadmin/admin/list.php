@@ -19,6 +19,16 @@ $stmt = $conn->query("SELECT * FROM admin_users ORDER BY created_at DESC");
 $admins = $stmt->fetchAll();
 ?>
 
+<style>
+    .d-flex.gap-2{
+        align-items: center !important;
+    }
+
+    .d-flex.gap-2 a{
+        max-height: 30px !important;
+    }
+</style>
+
 <div class="container-fluid">
     <?php include_once ROOT_DIR_PATH . 'include/inc/topbar.php'; ?>
     <div class="card shadow mb-4">
@@ -44,14 +54,14 @@ $admins = $stmt->fetchAll();
                             <table id="adminTable" class="table table-striped">
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
+                                        <th>SL No</th>
                                          <th>Name</th>
                                          <th>Email</th>
                                          <th>Department</th>
                                          <th>Phone</th>
-                                         <th>Approved By</th>
+                                         <!-- <th>Approved By</th> -->
                                         <th>Status</th>
-                                        <th>Registered</th>
+                                        <!-- <th>Registered</th> -->
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -63,20 +73,20 @@ $admins = $stmt->fetchAll();
                                         <td><?= htmlspecialchars($admin['email']) ?></td>
                                         <td><span class="badge badge-info"><?= ucfirst($admin['department'] ?? 'N/A') ?></span></td>
                                         <td><?= htmlspecialchars($admin['phone'] ?? 'N/A') ?></td>
-                                        <td><?= htmlspecialchars($admin['approved_by'] ?? 'N/A') ?></td>
+                                        <!-- <td><?= htmlspecialchars($admin['approved_by'] ?? 'N/A') ?></td> -->
                                         <td>
                                             <span class="badge bg-<?= $admin['status'] === 'approved' ? 'success' : ($admin['status'] === 'pending' ? 'warning' : 'danger') ?>">
                                                 <?= ucfirst($admin['status']) ?>
                                             </span>
                                         </td>
-                                        <td><?= date('d-m-Y', strtotime($admin['created_at'])) ?></td>
+                                        <!-- <td><?= date('d-m-Y', strtotime($admin['created_at'])) ?></td> -->
                                         <td class="d-flex gap-2">
-                                            <a href="view.php?id=<?= $admin['id'] ?>" class="btn btn-sm btn-info">View</a>
+                                            <a href="view.php?id=<?= $admin['id'] ?>" class="btn btn-sm btn-info mr-2">View</a>
                                             <?php if ($admin['status'] === 'pending'): ?>
                                             <a href="approve.php?id=<?= $admin['id'] ?>" class="btn btn-sm btn-success">Approve</a>
                                             <?php endif; ?>
                                             <?php if ($admin['status'] === 'approved'): ?>
-                                            <a href="deactivate.php?id=<?= $admin['id'] ?>" class="btn btn-sm btn-warning" onclick="return confirm('Are you sure you want to deactivate this admin?')">Deactivate</a>
+                                            <a href="deactivate.php?id=<?= $admin['id'] ?>" class="btn btn-sm btn-warning mr-2" onclick="return confirm('Are you sure you want to deactivate this admin?')">Deactivate</a>
                                             <button type="button" class="btn btn-sm btn-info" data-toggle="modal" data-target="#changeDeptModal<?= $admin['id'] ?>">Change Dept</button>
                                             <?php endif; ?>
                                             <?php if ($admin['status'] === 'rejected'): ?>

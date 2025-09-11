@@ -40,7 +40,7 @@ try {
                         <table id="quotationsTable" class="table table-bordered table-striped">
                     <thead>
                         <tr>
-                            <th>Sr NO</th>
+                            <th>Sl No</th>
                             <th>Quotation Number</th>
                             <th>Customer Name</th>
                             <th>Customer Email</th>
@@ -118,10 +118,11 @@ try {
 <script>
 $(document).ready(function() {
     var quotationsTable = $('#quotationsTable').DataTable({
-        order: [[0, 'desc']],
+        order: [[1, 'desc']],
         pageLength: 10,
         lengthChange: false,
-        searching: true
+        searching: true,
+        dom: 'rt<"bottom"p>'
     });
 
     $('#searchQuotationInput').on('keyup', function() {

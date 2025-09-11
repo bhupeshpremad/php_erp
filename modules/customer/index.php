@@ -47,7 +47,7 @@ try {
             (SELECT COUNT(*) FROM pi p JOIN quotations q2 ON p.quotation_id = q2.id WHERE q2.lead_id = l.id) as total_pis
         FROM leads l
         WHERE l.approve = 1
-        ORDER BY l.company_name ASC
+        ORDER BY l.id DESC
     ");
     $customers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
@@ -74,7 +74,7 @@ try {
                     <table id="customersTable" class="table table-bordered table-striped">
                         <thead>
                             <tr>
-                                <th>Sl Number</th>
+                                <th>Sl No</th>
                                 <th>Customer Name</th>
                                 <th>Customer Email</th>
                                 <th>Customer Phone</th>
