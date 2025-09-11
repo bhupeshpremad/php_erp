@@ -161,16 +161,22 @@ $(document).ready(function() {
                     if ($.fn.DataTable.isDataTable('#vendorsPaymentStatusTable')) {
                         $('#vendorsPaymentStatusTable').DataTable().destroy();
                     }
-                    var table = $('#vendorsPaymentStatusTable').DataTable({
+                    var paymentsTable = $('#vendorsPaymentStatusTable').DataTable({
                         order: [[0, 'desc']],
                         pageLength: 10,
                         lengthChange: false,
-                        searching: false
+                        searching: true,
+                        dom: 'rt<"bottom"p>'
                     });
                     
                     // Custom search functionality
-                    $('#paymentSearchInput').off('keyup').on('keyup', function() {
-                        table.search(this.value).draw();
+                    $('#paymentSearchInput').off('keyup input').on('keyup', function() {
+                        var searchValue = this.value;
+                        paymentsTable.search(searchValue).draw();
+                    }).on('input', function() {
+                        if (this.value === '') {
+                            paymentsTable.search('').draw();
+                        }
                     });
                 } else {
                     $('#vendorsPaymentStatusTable tbody').html('<tr><td colspan="9" class="text-center text-danger">Error loading payments.</td></tr>');

@@ -125,11 +125,16 @@ $po_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <script>
 $(document).ready(function () {
-    $('#poTable').DataTable({
+    var poTable = $('#poTable').DataTable({
         order: [[0, 'desc']],
         pageLength: 10,
         lengthChange: false,
-        searching: false
+        searching: true
+    });
+    
+    // Custom search functionality
+    $('#poSearchInput').on('keyup', function() {
+        poTable.search(this.value).draw();
     });
 
     document.querySelectorAll('.view-items-btn').forEach(function(btn) {

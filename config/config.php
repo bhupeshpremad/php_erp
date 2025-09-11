@@ -36,7 +36,7 @@ if (!class_exists('AppConfig')) {
                 // Local configuration
                 return [
                     'host' => $_ENV['DB_HOST_LOCAL'] ?? 'localhost',
-                    'db' => $_ENV['DB_NAME_LOCAL'] ?? 'php_erp3_db',
+                    'db' => $_ENV['DB_NAME_LOCAL'] ?? 'php_erp3_db_live',
                     'user' => $_ENV['DB_USER_LOCAL'] ?? 'root',
                     'pass' => $_ENV['DB_PASS_LOCAL'] ?? '',
                     'charset' => $_ENV['DB_CHARSET_LOCAL'] ?? 'utf8mb4',
@@ -88,6 +88,8 @@ $appEnv = $_ENV['APP_ENV'] ?? 'production';
 if ($appEnv === 'local') {
     error_reporting(E_ALL);
     ini_set('display_errors', 1);
+    ini_set('log_errors', 1);
+    ini_set('error_log', ROOT_PATH . 'error.log');
 } else {
     error_reporting(0);
     ini_set('display_errors', 0);

@@ -28,18 +28,24 @@ try {
         exit;
     }
     
-    // Fetch purchase items with proper data cleaning including Wood dimensions
+    // Fetch purchase items with proper data structure
     $stmt_items = $conn->prepare("
-        SELECT *, 
-        TRIM(supplier_name) as supplier_name, 
-        TRIM(product_type) as product_type, 
-        TRIM(product_name) as product_name, 
-        TRIM(job_card_number) as job_card_number,
-        COALESCE(length_ft, 0) as length_ft,
-        COALESCE(width_ft, 0) as width_ft,
-        COALESCE(thickness_inch, 0) as thickness_inch
-        FROM purchase_items 
-        WHERE purchase_main_id = ?
+        SELECT 
+            pi.*,
+            TRIM(COALESCE(pi.supplier_name, '')) as supplier_name, 
+            TRIM(COALESCE(pi.product_type, '')) as product_type, 
+            TRIM(COALESCE(pi.product_name, '')) as product_name, 
+            TRIM(COALESCE(pi.job_card_number, '')) as job_card_number,
+            COALESCE(pi.length_ft, 0) as length_ft,
+            COALESCE(pi.width_ft, 0) as width_ft,
+            COALESCE(pi.thickness_inch, 0) as thickness_inch,
+            COALESCE(pi.row_id, 0) as row_id,
+            COALESCE(pi.assigned_quantity, 0) as assigned_quantity,
+            COALESCE(pi.price, 0) as price,
+            COALESCE(pi.total, 0) as total
+        FROM purchase_items pi
+        WHERE pi.purchase_main_id = ?
+        ORDER BY pi.row_id ASC, pi.id ASC
     ");
     $stmt_items->execute([$purchase_main['id']]);
     $purchase_items = $stmt_items->fetchAll(PDO::FETCH_ASSOC);

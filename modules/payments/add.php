@@ -245,20 +245,26 @@ $jci_numbers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         uniqueItemIds.add(item.id);
                                         item.supplier_id = supplier.id;
                                         item.supplier_name = supplier.supplier_name;
-                                        const itemName = item.item_name.toLowerCase();
-                                        const productType = (item.product_type || '').toLowerCase();
+                                        const itemName = (item.item_name || '').toString().toLowerCase();
+                                        const productType = (item.product_type || '').toString().toLowerCase();
 
-                                        // Calculate item_amount as quantity * price
-                                        item.item_amount = (parseFloat(item.item_quantity) * parseFloat(item.item_price)).toFixed(2);
+                                        // Safely calculate item_amount as quantity * price to avoid NaN rendering
+                                        const q = parseFloat(item.item_quantity);
+                                        const p = parseFloat(item.item_price);
+                                        const safeQty = isNaN(q) ? 0 : q;
+                                        const safePrice = isNaN(p) ? 0 : p;
+                                        item.item_amount = (safeQty * safePrice).toFixed(2);
+                                        item.item_quantity = safeQty; // normalize for rendering
+                                        item.item_price = safePrice;   // normalize for rendering
 
                                         // Use product_type for better categorization
                                         if (productType.includes('wood') || itemName.includes('wood') || itemName.includes('mango') || itemName.includes('teak') || itemName.includes('sheesham')) {
                                             woodItems.push(item);
-                                        } else if (productType.includes('glow') || itemName.includes('glow') || itemName.includes('fevicol') || itemName.includes('favicole')) {
+                                        } else if (productType.includes('glow type') || productType.includes('glow') || itemName.includes('glow') || itemName.includes('fevicol') || itemName.includes('favicole')) {
                                             glowItems.push(item);
                                         } else if (productType.includes('plynydf') || productType.includes('ply') || itemName.includes('ply')) {
                                             plyItems.push(item);
-                                        } else if (productType.includes('hardware') || itemName.includes('hardware') || itemName.includes('screw')) {
+                                        } else if (productType.includes('hardware') || productType.includes('item name') || itemName.includes('hardware') || itemName.includes('screw')) {
                                             hardwareItems.push(item);
                                         } else {
                                             // Default to appropriate category based on product_type
@@ -266,7 +272,7 @@ $jci_numbers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                 if (productType.includes('wood')) woodItems.push(item);
                                                 else if (productType.includes('glow')) glowItems.push(item);
                                                 else if (productType.includes('ply')) plyItems.push(item);
-                                                else if (productType.includes('hardware')) hardwareItems.push(item);
+                                                else if (productType.includes('hardware') || productType.includes('item name')) hardwareItems.push(item);
                                                 else plyItems.push(item); // fallback
                                             } else {
                                                 plyItems.push(item); // fallback for unknown items
@@ -296,9 +302,9 @@ $jci_numbers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         tableHtml += `
                                             <tr class="supplier-item-row" data-supplier-id="${item.supplier_id || ''}" data-item-id="${item.id || ''}">
                                                 <td><input type="text" class="form-control item_name" value="${item.item_name || ''}" readonly></td>
-                                                <td><input type="number" class="form-control item_quantity" value="${item.item_quantity || ''}" readonly></td>
-                                                <td><input type="number" class="form-control item_price" value="${item.item_price || ''}" readonly></td>
-                                                <td><input type="number" class="form-control item_amount" value="${parseFloat(item.item_amount).toFixed(2) || '0.00'}" readonly></td>
+                                                <td><input type="number" class="form-control item_quantity" value="${Number(item.item_quantity) || 0}" readonly></td>
+                                                <td><input type="number" class="form-control item_price" value="${Number(item.item_price) || 0}" readonly></td>
+                                                <td><input type="number" class="form-control item_amount" value="${(Number(item.item_amount) || 0).toFixed(2)}" readonly></td>
                                                 <input type="hidden" class="item_product_type" value="${item.product_type || ''}">
                                             </tr>`;
                                     });

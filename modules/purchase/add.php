@@ -9,6 +9,9 @@ if (!defined('ROOT_DIR_PATH')) {
 
 include_once ROOT_DIR_PATH . 'include/inc/header.php';
 
+// Get BOM ID from URL
+$bom_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
 $user_type = $_SESSION['user_type'] ?? 'guest';
 $is_superadmin = ($user_type === 'superadmin');
 
@@ -26,7 +29,7 @@ global $conn;
 
 // Check if this is edit mode
 $edit_mode = false;
-$purchase_id = $_GET['id'] ?? null;
+$purchase_id = $_GET['purchase_id'] ?? ($_GET['id'] ?? null);
 $purchase_data = [];
 $purchase_items = [];
 
@@ -116,6 +119,7 @@ try {
         <div class="card-body">
             <form id="purchaseDetailsForm">
                 <input type="hidden" id="purchase_id" name="purchase_id" value="<?php echo htmlspecialchars($purchase_id ?? ''); ?>">
+                <input type="hidden" id="bom_id" name="bom_id" value="<?php echo htmlspecialchars($bom_id); ?>">
                 <input type="hidden" id="po_number" name="po_number" value="<?php echo htmlspecialchars($purchase_data['po_number'] ?? ''); ?>">
                 <input type="hidden" id="sell_order_number" name="sell_order_number" value="<?php echo htmlspecialchars($purchase_data['sell_order_number'] ?? ''); ?>">
                 <input type="hidden" id="jci_number" name="jci_number" value="<?php echo htmlspecialchars($purchase_data['jci_number'] ?? ''); ?>">
@@ -154,7 +158,7 @@ try {
                 </div>
             </form>
             <div class="form-group mt-3">
-                <button type="submit" form="purchaseDetailsForm" class="btn btn-primary" id="saveAllSelectedBtn">Save All Selected</button>
+                <button type="button" class="btn btn-primary" id="saveAllSelectedBtn">Save All Selected</button>
             </div>
 
             <div class="card mt-4">
@@ -203,17 +207,33 @@ try {
 <script src="js/purchase-editable.js?v=<?php echo time(); ?>"></script>
 <script src="js/bulk-operations.js?v=<?php echo time(); ?>"></script>
 
+
 <script>
 // Force cache refresh - Version: <?php echo date('Y-m-d H:i:s'); ?>
-console.log('Script loaded at: <?php echo date('Y-m-d H:i:s'); ?>');
-
-// Global variables for individual row save
 window.isSuperAdmin = <?php echo json_encode($is_superadmin); ?>;
 window.existingPurchaseItems = <?php echo json_encode($purchase_items ?? []); ?>;
 
 $(document).ready(function() {
+// Restore last selected JCI (if not in edit mode)
+try {
+    var storedJci = localStorage.getItem('purchase_last_jci');
+    if (!window.editMode && storedJci) {
+        $('#jci_number_search').val(storedJci);
+        // Trigger change to load tables
+        $('#jci_number_search').trigger('change');
+    }
+} catch (e) { /* storage not available */ }
+
 $('#jci_number_search').on('change', function() {
     var selectedJciNumber = $(this).val();
+    // Persist current selection for automatic restoration on refresh
+    try {
+        if (selectedJciNumber) {
+            localStorage.setItem('purchase_last_jci', selectedJciNumber);
+        } else {
+            localStorage.removeItem('purchase_last_jci');
+        }
+    } catch (e) { /* ignore storage errors */ }
     var selectedOption = $(this).find('option:selected');
     var poId = selectedOption.data('po-id');
     var sellOrderNumber = selectedOption.data('son');
@@ -295,78 +315,40 @@ $('#jci_number_search').on('change', function() {
                     data: { jci_number: selectedJciNumber },
                     dataType: 'json',
                     success: function(bomItemsData) {
-                        console.log('BOM Items Data:', bomItemsData);
-                        if (bomItemsData && bomItemsData.length > 0) {
-                            // Store BOM data globally for individual save function
+            if (bomItemsData && bomItemsData.length > 0) {
                             window.currentBomData = bomItemsData;
-                            
-                            toastr.info('BOM items found: ' + bomItemsData.length);
-                            // Clear previous BOM tables
                             $('#bomTableContainer').empty();
 
-                            // Check for existing purchase data first
                             $.ajax({
                                 url: 'ajax_fetch_saved_purchase.php',
                                 method: 'POST',
                                 data: { jci_number: selectedJciNumber },
                                 dataType: 'json',
                                 success: function(purchaseData) {
-                                    console.log('=== EXISTING PURCHASE DATA DEBUG ===');
-                                    console.log('Full purchase data:', purchaseData);
-                                    console.log('Has purchase:', purchaseData.has_purchase);
-                                    if (purchaseData.has_purchase && purchaseData.purchase_items) {
-                                        console.log('Purchase items count:', purchaseData.purchase_items.length);
-                                        console.log('Purchase items details:', purchaseData.purchase_items);
-                                        purchaseData.purchase_items.forEach(function(item, index) {
-                                            console.log('Item ' + index + ':', {
-                                                id: item.id,
-                                                supplier_name: item.supplier_name,
-                                                product_type: item.product_type,
-                                                product_name: item.product_name,
-                                                job_card_number: item.job_card_number,
-                                                assigned_quantity: item.assigned_quantity,
-                                                price: item.price,
-                                                length_ft: item.length_ft,
-                                                width_ft: item.width_ft,
-                                                thickness_inch: item.thickness_inch
-                                            });
-                                        });
-                                    } else {
-                                        console.log('No purchase items found');
-                                    }
-                                    console.log('=== END PURCHASE DATA DEBUG ===');
+                                    var existingItems = [];
                                     
-                                    // Use working fix table creation if available
-                                    if (purchaseData.has_purchase && purchaseData.purchase_items && typeof window.createPurchaseTable === 'function') {
-                                        console.log('=== USING WORKING FIX TABLE CREATION ===');
-                                        window.createPurchaseTable(purchaseData.purchase_items);
+                                    // Always use freshly fetched items to reflect latest save,
+                                    // and update the cached edit-mode data for subsequent actions
+                                    if (purchaseData && purchaseData.has_purchase) {
+                                        existingItems = purchaseData.purchase_items || [];
+                                        window.existingPurchaseItems = existingItems;
                                     } else {
-                                        var existingItems = purchaseData.has_purchase ? purchaseData.purchase_items : [];
-                                        // Use enhanced render function
-                                        if (typeof renderEnhancedBomTable === 'function') {
-                                            renderEnhancedBomTable(jobCards, bomItemsData, existingItems);
-                                        } else {
-                                            renderBomTable(jobCards, bomItemsData, existingItems);
-                                        }
+                                        existingItems = [];
+                                        window.existingPurchaseItems = [];
                                     }
+                                    
+                                    renderBomTable(jobCards, bomItemsData, existingItems);
                                 },
-                                error: function() {
-                                    console.log('Error fetching existing purchase data');
-                                    // Fallback: render tables without existing data
-                                    if (typeof renderEnhancedBomTable === 'function') {
-                                        renderEnhancedBomTable(jobCards, bomItemsData, []);
-                                    } else {
-                                        renderBomTable(jobCards, bomItemsData, []);
-                                    }
+                                error: function(xhr, status, error) {
+                                    console.log('AJAX error:', error, xhr.responseText);
+                                    renderBomTable(jobCards, bomItemsData, []);
                                 }
                             });
-                        } else {
-                            console.log('No BOM items found for JCI:', selectedJciNumber);
+} else {
                             toastr.warning('No BOM items found for the selected JCI.');
                         }
                     },
-                    error: function() {
-                        console.log('Error fetching BOM items for JCI:', selectedJciNumber);
+error: function() {
                         toastr.error('Error fetching BOM items for the selected JCI.');
                     }
                 });
@@ -592,16 +574,24 @@ function createBomTable(categoryName, data, savedItems, jobCardCount) {
                 });
             }
 
-            if (matchedSavedItem) {
+            if (existingItem) {
                 checkboxTd.find('.rowCheckbox').prop('checked', true);
-                // Prefill supplier and quantities from saved item
-                tr.find('.supplierNameInput').val(matchedSavedItem.supplier_name || '');
-                tr.find('.jobCardSelect').val(matchedSavedItem.job_card_number).prop('disabled', true);
-                tr.find('.assignedQtyInput').val(matchedSavedItem.assigned_quantity).prop('readonly', true);
-
-                var totalColIndex = getTableColumnIndex(categoryName, categoryName === 'BOM Hardware' ? 'totalprice' : 'total');
-                if (totalColIndex !== -1) {
-                    tr.find('td').eq(totalColIndex).find('input').val(matchedSavedItem.total);
+                
+                // Mark row as saved with green background
+                tr.addClass('table-success');
+                
+                // Fill supplier name
+                tr.find('.supplierNameInput').val(existingItem.supplier_name || '');
+                
+                // Fill assigned quantity
+                tr.find('.assignQuantityInput').val(existingItem.assigned_quantity || '0');
+                
+                // Fill invoice and builty data if available
+                if (existingItem.invoice_number) {
+                    tr.find('.invoiceNumberInput').val(existingItem.invoice_number);
+                }
+                if (existingItem.builty_number) {
+                    tr.find('.builtyNumberInput').val(existingItem.builty_number);
                 }
             }
             tbody.append(tr);
@@ -718,74 +708,37 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
         colHeaderRow.append('<th>Action</th>');
         thead.append(colHeaderRow);
 
-        bomItemsData.forEach(function(item) {
+        bomItemsData.forEach(function(item, bomIndex) {
             var tr = $('<tr></tr>');
+            tr.attr('data-bom-index', bomIndex);
 
-            // Find existing purchase item data for this BOM item
-            var existingItem = null;
-            console.log('=== MATCHING DEBUG FOR ITEM ===');
-            console.log('BOM Item:', {
-                product_type: item.product_type,
-                product_name: item.product_name,
-                quantity: item.quantity,
-                price: item.price,
-                length_ft: item.length_ft,
-                width_ft: item.width_ft,
-                thickness_inch: item.thickness_inch
-            });
-            console.log('Job Card:', jobCard);
-            console.log('Available existing items:', existingItems.length);
-
+var existingItem = null;
             if (existingItems && existingItems.length > 0) {
-                // First, try to find exact match with all criteria
+                // Strict match by row_id + job card + product info
                 existingItem = existingItems.find(function(pItem) {
-                    var pItemProductName = (pItem.product_name !== undefined && pItem.product_name !== null) ? String(pItem.product_name).trim() : '';
-                    var itemProductName = (item.product_name !== undefined && item.product_name !== null) ? String(item.product_name).trim() : '';
-                    var pItemProductType = (pItem.product_type !== undefined && pItem.product_type !== null) ? String(pItem.product_type).trim() : '';
-                    var itemProductType = (item.product_type !== undefined && item.product_type !== null) ? String(item.product_type).trim() : '';
-
-                    var typeMatch = pItemProductType === itemProductType;
-                    var nameMatch = pItemProductName === itemProductName;
-                    var jobCardMatch = pItem.job_card_number === jobCard;
-
-                    // For Wood items, match dimensions and quantity/price
-                    if (itemProductType === 'Wood' && typeMatch && nameMatch && jobCardMatch) {
-                        var lengthMatch = Math.abs(parseFloat(pItem.length_ft || 0) - parseFloat(item.length_ft || 0)) < 0.01;
-                        var widthMatch = Math.abs(parseFloat(pItem.width_ft || 0) - parseFloat(item.width_ft || 0)) < 0.01;
-                        var thicknessMatch = Math.abs(parseFloat(pItem.thickness_inch || 0) - parseFloat(item.thickness_inch || 0)) < 0.01;
-                        var quantityMatch = Math.abs(parseFloat(pItem.assigned_quantity || 0) - parseFloat(item.quantity || 0)) < 0.001;
-                        var priceMatch = Math.abs(parseFloat(pItem.price || 0) - parseFloat(item.price || 0)) < 0.01;
-                        return lengthMatch && widthMatch && thicknessMatch && quantityMatch && priceMatch;
-                    }
-
-                    // For non-wood items, match supplier name as well
-                    if (itemProductType !== 'Wood' && typeMatch && nameMatch && jobCardMatch) {
-                        var supplierMatch = pItem.supplier_name === item.supplier_name;
-                        return supplierMatch;
-                    }
-
-                    return false;
+                    return (pItem.job_card_number === jobCard) &&
+                           (parseInt(pItem.row_id || -1) === bomIndex) &&
+                           (pItem.product_type === item.product_type) &&
+                           (pItem.product_name === item.product_name);
                 });
 
-                // If no exact match found, try supplier-based matching for non-wood items
-                if (!existingItem && item.product_type !== 'Wood') {
+                // Legacy fallback (for old records without row_id): ensure no duplicate usage
+                if (!existingItem) {
                     existingItem = existingItems.find(function(pItem) {
-                        return pItem.supplier_name === item.supplier_name &&
-                               pItem.product_type === item.product_type &&
-                               pItem.product_name === item.product_name &&
-                               pItem.job_card_number === jobCard &&
-                               Math.abs(parseFloat(pItem.assigned_quantity || 0) - parseFloat(item.quantity || 0)) < 0.001;
+                        var legacyRow = !pItem.row_id || parseInt(pItem.row_id) === 0;
+                        var notUsed = (!window.usedItemIds || !window.usedItemIds.has(String(pItem.id)));
+                        return legacyRow && notUsed &&
+                               (pItem.job_card_number === jobCard) &&
+                               (pItem.product_type === item.product_type) &&
+                               (pItem.product_name === item.product_name);
                     });
                 }
 
-                console.log('Match result:', existingItem ? 'FOUND ID: ' + existingItem.id : 'NOT FOUND');
-                
-                // Mark this item as used if found to prevent duplicate green rows
-                if (existingItem && window.usedItemIds) {
-                    window.usedItemIds.add(existingItem.id);
+                if (existingItem) {
+                    if (!window.usedItemIds) { window.usedItemIds = new Set(); }
+                    window.usedItemIds.add(String(existingItem.id));
                 }
             }
-            console.log('=== END MATCHING DEBUG ===');
 
             var supplierName = existingItem ? (existingItem.supplier_name || '').toString().replace(/"/g, '&quot;') : '';
             var assignedQty = existingItem ? existingItem.assigned_quantity : '0';
@@ -822,8 +775,11 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
             var fileInputVisibility = (invoiceImage && !isSuperAdmin) ? 'style="display:none;"' : '';
             var builtyFileInputVisibility = (builtyImage && !isSuperAdmin) ? 'style="display:none;"' : '';
 
+            // Add hidden input for existing item ID
+            var hiddenItemId = existingItem ? '<input type="hidden" class="existing-item-id" value="' + existingItem.id + '">' : '<input type="hidden" class="existing-item-id" value="">';
+            
             // Explicitly append all columns in correct order
-            tr.append('<td><input type="checkbox" class="rowCheckbox" ' + (isChecked ? 'checked' : '') + ' ' + inputDisabled + '></td>'); // Checkbox
+            tr.append('<td><input type="checkbox" class="rowCheckbox" ' + (isChecked ? 'checked' : '') + ' ' + inputDisabled + '>' + hiddenItemId + '</td>'); // Checkbox + Hidden ID
             tr.append('<td></td>'); // Sr. No. (will be filled by updateSerialNumbers)
             tr.append('<td><input type="text" class="form-control form-control-sm supplierNameInput" value="' + (supplierName || '').toString().replace(/"/g, '&quot;') + '" ' + inputReadonly + '></td>'); // Supplier Name
             tr.append('<td><input type="text" class="form-control form-control-sm productTypeInput" value="' + item.product_type + '" readonly></td>'); // Product Type
@@ -860,32 +816,15 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
             var actionTd = '<td>';
             actionTd += '<button type="button" class="btn btn-primary btn-sm saveRowBtn" ' + inputDisabled + '>Save</button>';
             
-            // DEBUG: Console logs to check delete button logic
-            console.log('=== DELETE BUTTON DEBUG ===');
-            console.log('supplierName:', supplierName);
-            console.log('supplierName exists:', !!supplierName);
-            console.log('supplierName.trim():', supplierName ? supplierName.trim() : 'null');
-            console.log('condition result:', supplierName && supplierName.trim() !== '');
-            console.log('item.product_name:', item.product_name);
-            console.log('jobCard:', jobCard);
+            // Add delete button for superadmin on saved rows, include row_id for precise deletion
             
-            // Add delete button for superadmin on saved rows  
-            var isSuperAdmin = <?php echo json_encode($is_superadmin); ?>;
+var isSuperAdmin = <?php echo json_encode($is_superadmin); ?>;
             if (isSuperAdmin && supplierName && supplierName.trim() !== '') {
-                console.log('ADDING DELETE BUTTON for supplier:', supplierName);
-                // Escape quotes in data attributes
                 var safeSupplier = supplierName.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
                 var safeProduct = item.product_name.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
                 var safeJobCard = jobCard.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
-                actionTd += ' <button type="button" class="btn btn-danger btn-sm deleteRowBtn" data-supplier="' + safeSupplier + '" data-product="' + safeProduct + '" data-job-card="' + safeJobCard + '" title="Delete this row">Delete</button>';
-            } else if (!isSuperAdmin) {
-                console.log('DELETE BUTTON NOT SHOWN - not superadmin');
-            } else {
-                console.log('DELETE BUTTON NOT SHOWN - no supplier name');
+                actionTd += ' <button type="button" class="btn btn-danger btn-sm deleteRowBtn" data-supplier="' + safeSupplier + '" data-product="' + safeProduct + '" data-job-card="' + safeJobCard + '" data-row-id="' + bomIndex + '" title="Delete this row">Delete</button>';
             }
-            
-            console.log('Final actionTd HTML:', actionTd);
-            console.log('=== END DEBUG ===');
             
             actionTd += '</td>';
             tr.append(actionTd);
@@ -928,34 +867,17 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
         }
     });
     
-    // Delete row handler for superadmin - with improved error handling
-    $('#bomTableContainer').on('click', '.deleteRowBtn', function(e) {
+$('#bomTableContainer').on('click', '.deleteRowBtn', function(e) {
         e.preventDefault();
-        e.stopPropagation();
-        
         var $btn = $(this);
         var supplier = $btn.data('supplier');
         var product = $btn.data('product');
         var jobCard = $btn.data('job-card');
+        var rowId = $btn.data('row-id');
         var jciNumber = $('#jci_number').val();
         
-        console.log('Delete button clicked:', {
-            supplier: supplier,
-            product: product,
-            jobCard: jobCard,
-            jciNumber: jciNumber
-        });
-        
-        if (!supplier || !product || !jobCard || !jciNumber) {
-            toastr.error('Missing required data for deletion');
-            return;
-        }
-        
-        var confirmMsg = 'Delete saved data for:\nSupplier: ' + supplier + '\nProduct: ' + product + '\nJob Card: ' + jobCard + '\n\nThis will permanently delete the row data.';
-        
-        if (confirm(confirmMsg)) {
+        if (confirm('Delete this row?')) {
             $btn.prop('disabled', true).text('Deleting...');
-            
             $.ajax({
                 url: 'ajax_delete_row_by_details.php',
                 method: 'POST',
@@ -963,23 +885,20 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
                     supplier_name: supplier,
                     product_name: product,
                     job_card_number: jobCard,
-                    jci_number: jciNumber
+                    jci_number: jciNumber,
+                    row_id: rowId
                 },
-                dataType: 'json',
-                timeout: 10000,
                 success: function(response) {
-                    console.log('Delete response:', response);
                     if (response.success) {
-                        toastr.success('Row deleted successfully!');
-                        $('#jci_number_search').trigger('change'); // Reload table
+                        toastr.success('Row deleted!');
+                        $('#jci_number_search').trigger('change');
                     } else {
-                        toastr.error(response.error || 'Failed to delete row');
+                        toastr.error('Delete failed');
                         $btn.prop('disabled', false).text('Delete');
                     }
                 },
-                error: function(xhr, status, error) {
-                    console.error('Delete AJAX error:', xhr.responseText, status, error);
-                    toastr.error('Network error while deleting: ' + error);
+                error: function() {
+                    toastr.error('Delete error');
                     $btn.prop('disabled', false).text('Delete');
                 }
             });
@@ -1017,9 +936,7 @@ $('#bomTableContainer').on('click', '.saveRowBtn', function() {
         return;
     }
     
-    // Use existing saveItems function with specific row
-    console.log('Saving individual row:', row);
-    saveItems(row);
+saveItems(row);
 });
 
 function saveItems(rowToSave) {
@@ -1048,10 +965,8 @@ function saveItems(rowToSave) {
                 if (row[0] !== rowToSave[0]) {
                     return true; // Skip all other rows completely
                 }
-                // Double check: this specific row MUST be checked
                 if (!row.find('.rowCheckbox').is(':checked')) {
-                    console.log('Row save cancelled - checkbox not checked');
-                    return false; // Stop processing if not checked
+                    return false;
                 }
             } else {
                 // For bulk save, check if row is checked
@@ -1131,10 +1046,8 @@ function saveItems(rowToSave) {
                 return false;
             }
             
-            // Skip empty rows (no supplier name and no assigned quantity)
             if (supplier_name.trim() === '' && (isNaN(parseFloat(assigned_quantity)) || parseFloat(assigned_quantity) <= 0)) {
-                console.log('Skipping empty row:', product_name);
-                return true; // Skip this row
+                return true;
             }
 
             var bomQuantity = parseFloat(row.find('.bomQuantityInput').val()) || 0;
@@ -1147,28 +1060,27 @@ function saveItems(rowToSave) {
                 return false;
             }
             
-            // Get unique ID from existing purchase item if available
-            var uniqueId = null;
-            var existingItems = <?php echo json_encode($purchase_items ?? []); ?>;
-            
-            // Try to find matching item with precise criteria
-            var matchingItem = existingItems.find(function(item) {
-                return item.job_card_number === job_card_number_from_table &&
-                       item.product_type === product_type &&
-                       item.product_name === product_name &&
-                       item.supplier_name === supplier_name &&
-                       Math.abs(parseFloat(item.assigned_quantity || 0) - parseFloat(assigned_quantity)) < 0.001 &&
-                       Math.abs(parseFloat(item.price || 0) - parseFloat(price)) < 0.01;
-            });
-            
-            if (matchingItem) {
-                uniqueId = matchingItem.id;
+// Create BOM reference for this specific row
+            var bomReference = product_type + '_' + product_name + '_' + job_card_number_from_table;
+            if (product_type === 'Wood') {
+                var bomQty = parseFloat(row.find('.bomQuantityInput').val()) || 0;
+                var bomPrice = parseFloat(row.find('.bomPriceInput').val()) || 0;
+                bomReference += '_qty_' + bomQty + '_price_' + bomPrice;
             }
+            bomReference += '_row_' + rowIndex;
             
-            // Collect items data as an array of objects
+            var bomQuantity = parseFloat(row.find('.bomQuantityInput').val()) || 0;
+            
+            // Get existing item ID if available
+            var existingItemId = row.find('.existing-item-id').val() || null;
+
+            // Get BOM index from data attribute
+            var bomIndex = row.data('bom-index') !== undefined ? row.data('bom-index') : rowIndex;
+
             items_to_save.push({
-                rowIndex: rowIndex, // Add rowIndex for file association
-                uniqueId: uniqueId, // Add unique ID for precise row identification
+                rowIndex: rowIndex,
+                row_id: bomIndex,
+                existing_item_id: existingItemId,
                 supplier_name: supplier_name,
                 product_type: product_type,
                 product_name: product_name,
@@ -1206,13 +1118,7 @@ function saveItems(rowToSave) {
     formData.append('is_superadmin', isSuperAdmin);
     formData.append('items_json', JSON.stringify(items_to_save)); // Send items as a JSON string
     
-    // Add debug info
-    console.log('Saving items:', items_to_save);
-    console.log('Form data prepared for:', jci_number);
-    console.log('Row-specific save:', rowToSave ? 'Yes' : 'No');
-    if (rowToSave) {
-        console.log('Target row checkbox checked:', rowToSave.find('.rowCheckbox').is(':checked'));
-    }
+
 
     // Append file inputs to FormData
     var rowsToProcess = rowToSave ? rowToSave : $('#bomTableContainer table tbody tr');
@@ -1221,18 +1127,20 @@ function saveItems(rowToSave) {
         if (row.find('.rowCheckbox').is(':checked') || rowToSave) {
             var invoiceImageFile = row.find('.invoiceImageInput')[0].files[0];
             var builtyImageFile = row.find('.builtyImageInput')[0].files[0];
+            var bomIndexForRow = row.data('bom-index');
 
             if (invoiceImageFile) {
-                formData.append('invoice_image_' + rowIndex, invoiceImageFile);
+                // Use row-id based key so backend maps file to the exact row
+                formData.append('invoice_image_row_' + bomIndexForRow, invoiceImageFile);
             }
             if (builtyImageFile) {
-                formData.append('builty_image_' + rowIndex, builtyImageFile);
+                formData.append('builty_image_row_' + bomIndexForRow, builtyImageFile);
             }
         }
     });
 
     $.ajax({
-        url: 'ajax_save_purchase.php',
+        url: 'ajax_save_individual_row.php',
         method: 'POST',
         data: formData,
         processData: false, // Important: tell jQuery not to process the data
@@ -1260,21 +1168,22 @@ function saveItems(rowToSave) {
     });
 }
 
-// Load existing data in edit mode
 <?php if ($edit_mode && $purchase_data): ?>
-    console.log('Edit mode detected, loading existing data');
-    var existingData = <?php echo json_encode($purchase_data); ?>;
-    var existingItems = <?php echo json_encode($purchase_items); ?>;
-    
-    // Set JCI dropdown value
-    if (existingData.jci_number) {
-        $('#jci_number_search').val(existingData.jci_number);
-        $('#jci_number_search').trigger('change');
-    }
-<?php else: ?>
-    if ($('#jci_number_search').val()) {
-        $('#jci_number_search').trigger('change');
-    }
+// Edit mode - load existing data
+window.editMode = true;
+window.existingJCI = '<?php echo $purchase_data['jci_number']; ?>';
+window.existingPurchaseItems = <?php echo json_encode($purchase_items); ?>;
+
+console.log('Edit Mode Data:', {
+    editMode: window.editMode,
+    jci: window.existingJCI,
+    items: window.existingPurchaseItems
+});
+
+$(document).ready(function() {
+    // Set JCI dropdown and trigger change
+    $('#jci_number_search').val(window.existingJCI).trigger('change');
+});
 <?php endif; ?>
 });
 </script>

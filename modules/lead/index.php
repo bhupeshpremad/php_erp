@@ -153,12 +153,21 @@ if ($user_type === 'superadmin') {
 
 <script>
 $(document).ready(function() {
-    $('#leadsTable').DataTable({
-        order: [[0, 'desc']],
-        pageLength: 10,
-        lengthChange: false,
-        searching: false
+    // Initialize DataTable with server-side processing
+    if (!$.fn.DataTable.isDataTable('#leadsTable')) {
+        var leadsTable = $('#leadsTable').DataTable({
+            order: [[0, 'desc']],
+            pageLength: 10,
+            lengthChange: false,
+            searching: true
+        });
+    }
+
+    // Custom search functionality
+    $('#searchInput').on('keyup', function() {
+        leadsTable.search(this.value).draw();
     });
+
     // Status modal button click event
     $(document).on('click', '.status-modal-btn', function() {
         var leadId = $(this).data('id');
@@ -166,7 +175,7 @@ $(document).ready(function() {
         $('#modalLeadNumber').text(leadNumber);
         $('#statusLeadId').val(leadId);
         $('#statusHistoryTable tbody').html('<tr><td colspan="3" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading status history...</td></tr>');
-        
+
         $('#statusModal').modal('show');
 
         $.ajax({
@@ -190,58 +199,6 @@ $(document).ready(function() {
                 $('#statusHistoryTable tbody').html('<tr><td colspan="3" class="text-center text-danger"><i class="fas fa-exclamation-triangle"></i> Error loading status history. Please try again.</td></tr>');
             }
         });
-    });
-
-    // Search input handler with debounce
-    let searchTimeout = null;
-    $('#searchInput').on('input', function() {
-        clearTimeout(searchTimeout);
-        const query = $(this).val().trim();
-
-        searchTimeout = setTimeout(function() {
-            $.ajax({
-                url: '<?php echo BASE_URL; ?>modules/lead/ajax_process_lead.php',
-                type: 'POST',
-                data: { action: 'search_leads', search: query },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success && response.leads) {
-                        let rows = '';
-                        if (response.leads.length > 0) {
-                            response.leads.forEach(function(lead) {
-                                const approveBtnClass = lead.approve == 1 ? 'btn-success' : 'btn-warning';
-                                const approveText = lead.approve == 1 ? 'Approved' : 'Approve';
-                                rows += '<tr>';
-                                rows += '<td>' + lead.id + '</td>';
-                                rows += '<td>' + lead.lead_number + '</td>';
-                                rows += '<td>' + lead.contact_name + '</td>';
-                                rows += '<td>' + lead.contact_email + '</td>';
-                                rows += '<td>' + lead.country + '</td>';
-                                rows += '<td class="d-flex" style="gap:15px;">' +
-                                    '<button class="btn btn-sm btn-info status-modal-btn" data-id="' + lead.id + '" data-lead="' + lead.lead_number + '">Status</button>' +
-                                    '</td>';
-                                rows += '<td>' +
-                                    '<button class="btn btn-sm ' + approveBtnClass + ' toggle-approve-btn" data-id="' + lead.id + '" data-approve="' + lead.approve + '">' + approveText + '</button>' +
-                                    '</td>';
-                                rows += '<td>' +
-                                    '<a href="add.php?lead_id=' + encodeURIComponent(lead.id) + '" class="btn btn-sm btn-info">Edit</a>' +
-                                    '</td>';
-                                rows += '</tr>';
-                            });
-                        } else {
-                            rows = '<tr><td colspan="8" class="text-center">No leads found.</td></tr>';
-                        }
-                        $('#leadsTable').DataTable().clear().rows.add($(rows)).draw();
-                    } else {
-                        $('#leadsTable tbody').html('<tr><td colspan="8" class="text-center text-danger">Error loading leads.</td></tr>');
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error('Search AJAX error:', error);
-                    $('#leadsTable tbody').html('<tr><td colspan="8" class="text-center text-danger">Error loading leads.</td></tr>');
-                }
-            });
-        }, 300); // debounce delay 300ms
     });
 
     // Add new status
@@ -296,6 +253,8 @@ $(document).ready(function() {
                        .addClass(newApprove == 1 ? 'btn-success' : 'btn-warning')
                        .text(newApprove == 1 ? 'Approved' : 'Approve');
                     toastr.success(response.message);
+                    // Reload page to update data
+                    location.reload();
                 } else {
                     toastr.error(response.message || 'Failed to update approval.');
                 }

@@ -9,13 +9,22 @@ if (!isset($conn)) {
 
 $response = ['success' => false, 'message' => 'Unknown error occurred'];
 
-$page = isset($_POST['page']) ? (int)$_POST['page'] : 1;
-$records_per_page = isset($_POST['records_per_page']) ? (int)$_POST['records_per_page'] : 20;
-$search = isset($_POST['search']) ? trim($_POST['search']) : '';
+$draw = isset($_POST['draw']) ? (int)$_POST['draw'] : 1;
+$start = isset($_POST['start']) ? (int)$_POST['start'] : 0;
+$length = isset($_POST['length']) ? (int)$_POST['length'] : 10;
+$searchValue = isset($_POST['search']['value']) ? trim($_POST['search']['value']) : '';
 
-$offset = ($page - 1) * $records_per_page;
+$offset = $start;
+$records_per_page = $length;
+$search = $searchValue;
 
 try {
+    // Get total records without filter
+    $totalQuery = "SELECT COUNT(*) FROM quotations";
+    $totalStmt = $conn->prepare($totalQuery);
+    $totalStmt->execute();
+    $recordsTotal = $totalStmt->fetchColumn();
+
     $whereClauses = [];
     $params = [];
 
@@ -30,17 +39,17 @@ try {
         $whereSql = 'WHERE ' . implode(' AND ', $whereClauses);
     }
 
-    // Get total records count
+    // Get filtered records count
     $countQuery = "SELECT COUNT(*) FROM quotations $whereSql";
     $countStmt = $conn->prepare($countQuery);
     foreach ($params as $key => $value) {
         $countStmt->bindValue($key, $value);
     }
     $countStmt->execute();
-    $totalRecords = $countStmt->fetchColumn();
+    $recordsFiltered = $countStmt->fetchColumn();
 
     // Get paginated records
-    $dataQuery = "SELECT id, lead_id, quotation_number, customer_name, customer_email, customer_phone, delivery_term, terms_of_delivery, approve, locked FROM quotations $whereSql ORDER BY id DESC LIMIT :offset, :limit";
+    $dataQuery = "SELECT id, lead_id, quotation_number, customer_name, customer_email, customer_phone, delivery_term, terms_of_delivery, approve, is_locked, quotation_image as excel_file FROM quotations $whereSql ORDER BY id DESC LIMIT :offset, :limit";
     $dataStmt = $conn->prepare($dataQuery);
     foreach ($params as $key => $value) {
         $dataStmt->bindValue($key, $value);
@@ -51,10 +60,10 @@ try {
     $quotations = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
 
     $response['success'] = true;
-    $response['data'] = [
-        'quotations' => $quotations,
-        'total_records' => $totalRecords
-    ];
+    $response['draw'] = $draw;
+    $response['recordsTotal'] = $recordsTotal;
+    $response['recordsFiltered'] = $recordsFiltered;
+    $response['data'] = $quotations;
 } catch (Exception $e) {
     $response['message'] = 'Database error: ' . $e->getMessage();
 }

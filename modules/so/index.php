@@ -130,11 +130,16 @@ $so_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <script>
     $(document).ready(function () {
-        $('#soTable').DataTable({
+        var soTable = $('#soTable').DataTable({
             order: [[0, 'desc']],
             pageLength: 10,
             lengthChange: false,
-            searching: false
+            searching: true
+        });
+        
+        // Custom search functionality
+        $('#soSearchInput').on('keyup', function() {
+            soTable.search(this.value).draw();
         });
 
         $(document).on('click', '.view-so-items-btn', function() {
