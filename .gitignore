@@ -71,6 +71,16 @@ direct_*.php
 complete_*.php
 audit_*.php
 clear_*.php
+add_search_functionality.php__
+cleanup_database.php__
+debug_purchase.php__
+debug_purchase__.php
+deploy__.php
+fix_all_search.php__
+fix_live__.php__
+quick_fix_duplicate.php__
+run_migration.php__
+test_db__.php
 
 # Ignore SQL files (except migrations)
 *.sql
