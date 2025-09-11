@@ -870,13 +870,14 @@ var isSuperAdmin = <?php echo json_encode($is_superadmin); ?>;
 $('#bomTableContainer').on('click', '.deleteRowBtn', function(e) {
         e.preventDefault();
         var $btn = $(this);
+        var $row = $btn.closest('tr');
         var supplier = $btn.data('supplier');
         var product = $btn.data('product');
         var jobCard = $btn.data('job-card');
         var rowId = $btn.data('row-id');
         var jciNumber = $('#jci_number').val();
         
-        if (confirm('Delete this row?')) {
+        if (confirm('Are you sure you want to delete this row?')) {
             $btn.prop('disabled', true).text('Deleting...');
             $.ajax({
                 url: 'ajax_delete_row_by_details.php',
@@ -888,17 +889,41 @@ $('#bomTableContainer').on('click', '.deleteRowBtn', function(e) {
                     jci_number: jciNumber,
                     row_id: rowId
                 },
+                dataType: 'json',
                 success: function(response) {
                     if (response.success) {
-                        toastr.success('Row deleted!');
-                        $('#jci_number_search').trigger('change');
+                        toastr.success('Row deleted successfully!');
+                        
+                        // Clear the row data immediately
+                        $row.find('.rowCheckbox').prop('checked', false);
+                        $row.find('.supplierNameInput').val('');
+                        $row.find('.assignQuantityInput').val('0');
+                        $row.find('.invoiceNumberInput').val('');
+                        $row.find('.builtyNumberInput').val('');
+                        $row.find('.existing-item-id').val('');
+                        $row.find('.existingInvoiceImage').val('');
+                        $row.find('.existingBuiltyImage').val('');
+                        $row.removeClass('table-success');
+                        $row.find('.badge').removeClass('badge-success').addClass('badge-warning').text('Pending');
+                        
+                        // Remove images if present
+                        $row.find('.invoiceImageThumb, .builtyImageThumb').remove();
+                        
+                        // Re-enable inputs
+                        $row.find('input, button').prop('disabled', false).prop('readonly', false);
+                        $row.find('.saveRowBtn').text('Save');
+                        
+                        // Hide delete button since row is now empty
+                        $btn.hide();
+                        
                     } else {
-                        toastr.error('Delete failed');
+                        toastr.error('Delete failed: ' + (response.error || 'Unknown error'));
                         $btn.prop('disabled', false).text('Delete');
                     }
                 },
-                error: function() {
-                    toastr.error('Delete error');
+                error: function(xhr, status, error) {
+                    console.error('Delete error:', error, xhr.responseText);
+                    toastr.error('Delete error: ' + error);
                     $btn.prop('disabled', false).text('Delete');
                 }
             });

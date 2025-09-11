@@ -73,11 +73,15 @@ if (!is_dir($builty_upload_dir)) { mkdir($builty_upload_dir, 0777, true); }
 $response = ['success' => false, 'error' => 'An unknown error occurred.'];
 
 try {
-    // Start transaction
+    // Start transaction with optimized isolation level
     $conn->beginTransaction();
+    
+    // Optimize connection for faster writes
+    $conn->exec("SET SESSION sql_mode = 'NO_AUTO_VALUE_ON_ZERO'");
+    $conn->exec("SET SESSION autocommit = 0");
 
-    // Get or create purchase_main record
-    $stmt_check = $conn->prepare("SELECT id FROM purchase_main WHERE jci_number = ?");
+    // Get or create purchase_main record with FOR UPDATE lock
+    $stmt_check = $conn->prepare("SELECT id FROM purchase_main WHERE jci_number = ? FOR UPDATE");
     $stmt_check->execute([$jci_number]);
     $existing_purchase = $stmt_check->fetch(PDO::FETCH_ASSOC);
     
@@ -109,7 +113,48 @@ try {
         $purchase_main_id = $conn->lastInsertId();
     }
 
-    // Loop through each item and process it
+    // Prepare statements once for better performance
+    $stmt_find = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND row_id = ? AND job_card_number = ? LIMIT 1");
+    
+    // Prepare update statements
+    $stmt_update_wood = $conn->prepare("
+        UPDATE purchase_items SET 
+        supplier_name = ?, product_type = ?, product_name = ?, job_card_number = ?, 
+        assigned_quantity = ?, price = ?, total = ?, date = ?, 
+        invoice_number = ?, amount = ?, invoice_image = ?, 
+        builty_number = ?, builty_image = ?, 
+        length_ft = ?, width_ft = ?, thickness_inch = ?, updated_at = NOW() 
+        WHERE id = ?
+    ");
+    
+    $stmt_update_regular = $conn->prepare("
+        UPDATE purchase_items SET 
+        supplier_name = ?, product_type = ?, product_name = ?, job_card_number = ?, 
+        assigned_quantity = ?, price = ?, total = ?, date = ?, 
+        invoice_number = ?, amount = ?, invoice_image = ?, 
+        builty_number = ?, builty_image = ?, updated_at = NOW() 
+        WHERE id = ?
+    ");
+    
+    // Prepare insert statements
+    $stmt_insert_wood = $conn->prepare("
+        INSERT INTO purchase_items 
+        (purchase_main_id, supplier_name, product_type, product_name, job_card_number, 
+         assigned_quantity, price, total, date, invoice_number, amount, 
+         invoice_image, builty_number, builty_image, 
+         length_ft, width_ft, thickness_inch, row_id, created_at) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    ");
+    
+    $stmt_insert_regular = $conn->prepare("
+        INSERT INTO purchase_items 
+        (purchase_main_id, supplier_name, product_type, product_name, job_card_number, 
+         assigned_quantity, price, total, date, invoice_number, amount, 
+         invoice_image, builty_number, builty_image, row_id, created_at) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    ");
+
+    // Process items in batch
     foreach ($items as $index => $item_data) {
         $supplier_name = filter_var($item_data['supplier_name'] ?? '', FILTER_SANITIZE_STRING);
         $product_type = filter_var($item_data['product_type'] ?? '', FILTER_SANITIZE_STRING);
@@ -184,25 +229,14 @@ try {
         }
 
         // Check if an item for this row_id already exists
-        $existing_item = null;
-        $stmt_find = $conn->prepare("SELECT id, invoice_number, builty_number, invoice_image, builty_image FROM purchase_items WHERE purchase_main_id = ? AND row_id = ? AND job_card_number = ? LIMIT 1");
         $stmt_find->execute([$purchase_main_id, $row_id, $job_card_number]);
         $existing_item = $stmt_find->fetch(PDO::FETCH_ASSOC);
 
         if ($existing_item) {
-            // Update existing item
-            if ($is_superadmin) {
+            // Update existing item using prepared statements
+            if ($is_superadmin || empty($existing_item['invoice_number'])) {
                 if ($product_type === 'Wood') {
-                    $stmt_update = $conn->prepare("
-                        UPDATE purchase_items SET 
-                        supplier_name = ?, product_type = ?, product_name = ?, job_card_number = ?, 
-                        assigned_quantity = ?, price = ?, total = ?, date = ?, 
-                        invoice_number = ?, amount = ?, invoice_image = ?, 
-                        builty_number = ?, builty_image = ?, 
-                        length_ft = ?, width_ft = ?, thickness_inch = ?, updated_at = NOW() 
-                        WHERE id = ?
-                    ");
-                    $stmt_update->execute([
+                    $stmt_update_wood->execute([
                         $supplier_name, $product_type, $product_name, $job_card_number,
                         $assigned_quantity, $price, $total, $date,
                         $invoice_number, $total, $invoice_image_name,
@@ -213,15 +247,7 @@ try {
                         $existing_item['id']
                     ]);
                 } else {
-                    $stmt_update = $conn->prepare("
-                        UPDATE purchase_items SET 
-                        supplier_name = ?, product_type = ?, product_name = ?, job_card_number = ?, 
-                        assigned_quantity = ?, price = ?, total = ?, date = ?, 
-                        invoice_number = ?, amount = ?, invoice_image = ?, 
-                        builty_number = ?, builty_image = ?, updated_at = NOW() 
-                        WHERE id = ?
-                    ");
-                    $stmt_update->execute([
+                    $stmt_update_regular->execute([
                         $supplier_name, $product_type, $product_name, $job_card_number,
                         $assigned_quantity, $price, $total, $date,
                         $invoice_number, $total, $invoice_image_name,
@@ -229,60 +255,12 @@ try {
                         $existing_item['id']
                     ]);
                 }
-            } else {
-                if (empty($existing_item['invoice_number'])) {
-                    if ($product_type === 'Wood') {
-                        $stmt_update = $conn->prepare("
-                            UPDATE purchase_items SET 
-                            supplier_name = ?, product_type = ?, product_name = ?, job_card_number = ?, 
-                            assigned_quantity = ?, price = ?, total = ?, date = ?, 
-                            invoice_number = ?, amount = ?, invoice_image = ?, 
-                            builty_number = ?, builty_image = ?, 
-                            length_ft = ?, width_ft = ?, thickness_inch = ?, updated_at = NOW() 
-                            WHERE id = ?
-                        ");
-                        $stmt_update->execute([
-                            $supplier_name, $product_type, $product_name, $job_card_number,
-                            $assigned_quantity, $price, $total, $date,
-                            $invoice_number, $total, $invoice_image_name,
-                            $builty_number, $builty_image_name,
-                            floatval($item_data['length_ft'] ?? 0),
-                            floatval($item_data['width_ft'] ?? 0),
-                            floatval($item_data['thickness_inch'] ?? 0),
-                            $existing_item['id']
-                        ]);
-                    } else {
-                        $stmt_update = $conn->prepare("
-                            UPDATE purchase_items SET 
-                            supplier_name = ?, product_type = ?, product_name = ?, job_card_number = ?, 
-                            assigned_quantity = ?, price = ?, total = ?, date = ?, 
-                            invoice_number = ?, amount = ?, invoice_image = ?, 
-                            builty_number = ?, builty_image = ?, updated_at = NOW() 
-                            WHERE id = ?
-                        ");
-                        $stmt_update->execute([
-                            $supplier_name, $product_type, $product_name, $job_card_number,
-                            $assigned_quantity, $price, $total, $date,
-                            $invoice_number, $total, $invoice_image_name,
-                            $builty_number, $builty_image_name,
-                            $existing_item['id']
-                        ]);
-                    }
-                }
             }
             $updated_id = $existing_item['id'];
         } else {
-            // Insert new item with row_id
+            // Insert new item using prepared statements
             if ($product_type === 'Wood') {
-                $stmt_insert = $conn->prepare("
-                    INSERT INTO purchase_items 
-                    (purchase_main_id, supplier_name, product_type, product_name, job_card_number, 
-                     assigned_quantity, price, total, date, invoice_number, amount, 
-                     invoice_image, builty_number, builty_image, 
-                     length_ft, width_ft, thickness_inch, row_id, created_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-                ");
-                $stmt_insert->execute([
+                $stmt_insert_wood->execute([
                     $purchase_main_id, $supplier_name, $product_type, $product_name, $job_card_number,
                     $assigned_quantity, $price, $total, $date, $invoice_number, $total,
                     $invoice_image_name, $builty_number, $builty_image_name,
@@ -292,14 +270,7 @@ try {
                     $row_id
                 ]);
             } else {
-                $stmt_insert = $conn->prepare("
-                    INSERT INTO purchase_items 
-                    (purchase_main_id, supplier_name, product_type, product_name, job_card_number, 
-                     assigned_quantity, price, total, date, invoice_number, amount, 
-                     invoice_image, builty_number, builty_image, row_id, created_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-                ");
-                $stmt_insert->execute([
+                $stmt_insert_regular->execute([
                     $purchase_main_id, $supplier_name, $product_type, $product_name, $job_card_number,
                     $assigned_quantity, $price, $total, $date, $invoice_number, $total,
                     $invoice_image_name, $builty_number, $builty_image_name, $row_id
