@@ -1,64 +1,47 @@
 <?php
+// PHP settings for error reporting
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// Required files
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../libs/fpdf/fpdf.php';
 
-// Check if po_id is provided in the URL
-if (!isset($_GET['po_id']) || empty($_GET['po_id'])) {
-    die('PO ID is required');
+// Check if po_id is provided and is a valid integer
+if (!isset($_GET['po_id']) || !is_numeric($_GET['po_id'])) {
+    die('Error: PO ID is required and must be a number.');
 }
 
-// Sanitize and validate the input
+// Sanitize the input to prevent injection attacks
 $po_id = intval($_GET['po_id']);
-global $conn;
-
-try {
-    // Fetch main PO data
-    $stmt = $conn->prepare("SELECT * FROM po_main WHERE id = :po_id");
-    $stmt->execute(['po_id' => $po_id]);
-    $po_main = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    // Handle case where PO is not found
-    if (!$po_main) {
-        die('PO not found');
-    }
-
-    // Fetch PO items, ordered by their ID
-    $stmt = $conn->prepare("SELECT * FROM po_items WHERE po_id = :po_id ORDER BY id ASC");
-    $stmt->execute(['po_id' => $po_id]);
-    $po_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-} catch (PDOException $e) {
-    die("Database error: " . $e->getMessage());
-}
 
 /**
  * PDF class extending FPDF to create a custom Purchase Order document.
  */
 class PDF extends FPDF {
+    private $conn;
+
+    function __construct($conn) {
+        parent::__construct();
+        $this->conn = $conn;
+    }
     
-    /**
-     * Header method, automatically called by FPDF on each page.
-     */
+    // Header method, automatically called by FPDF on each page.
     function Header() {
         $this->SetFont('Arial', 'B', 14);
         $this->Cell(0, 10, 'PURCHASE ORDER', 0, 1, 'C');
         $this->Ln(2);
     }
 
-    /**
-     * Footer method, automatically called by FPDF at the end of each page.
-     */
+    // Footer method, automatically called by FPDF at the end of each page.
     function Footer() {
         $this->SetY(-15);
         $this->SetFont('Arial', 'I', 8);
         $this->Cell(0, 5, 'This is a Computer Generated Document', 0, 1, 'C');
     }
 
-    /**
-     * Draws the main purchase order form.
-     * @param array $po_main Main purchase order data.
-     * @param array $po_items Array of purchase order items.
-     */
+    // Draws the main purchase order form.
     function drawForm($po_main, $po_items) {
         $this->SetFont('Arial', '', 8);
 
@@ -80,7 +63,7 @@ class PDF extends FPDF {
         $this->SetFont('Arial', '', 8);
         $this->Cell(20, 4, "Voucher No.", 0, 0);
         $this->SetFont('Arial', 'B', 8);
-        $this->Cell(34, 4, $po_main['po_number'], 0, 0);
+        $this->Cell(34, 4, htmlspecialchars($po_main['po_number']), 0, 0);
         
         $this->SetFont('Arial', '', 8);
         $this->Cell(15, 4, "Dated", 0, 0);
@@ -128,6 +111,9 @@ class PDF extends FPDF {
         $this->SetXY(12, 78);
         $this->SetFont('Arial', 'B', 8);
         $this->Cell(0, 4, 'Supplier (Bill from)', 0, 1);
+        $this->SetXY(12, 82);
+        $this->SetFont('Arial', '', 7);
+        $this->MultiCell(180, 4, htmlspecialchars($po_main['client_name']));
 
         // --- Items Table ---
         $this->SetFont('Arial', 'B', 8);
@@ -150,9 +136,9 @@ class PDF extends FPDF {
         foreach ($po_items as $i => $item) {
             $this->SetXY(10, $startY + $i * $rowHeight);
             $this->Cell(12, $rowHeight, $i + 1, 1, 0, 'C');
-            $this->Cell(67, $rowHeight, $item['product_name'], 1, 0, 'L');
+            $this->Cell(67, $rowHeight, htmlspecialchars($item['product_name']), 1, 0, 'L');
             $this->Cell(20, $rowHeight, "", 1, 0, 'C');
-            $this->Cell(20, $rowHeight, $item['quantity'], 1, 0, 'C');
+            $this->Cell(20, $rowHeight, htmlspecialchars($item['quantity']), 1, 0, 'C');
             $this->Cell(20, $rowHeight, number_format($item['price'], 2), 1, 0, 'R');
             $this->Cell(11, $rowHeight, "", 1, 0, 'C');
             $this->Cell(40, $rowHeight, number_format($item['total_amount'], 2), 1, 1, 'R');
@@ -193,9 +179,35 @@ class PDF extends FPDF {
 }
 
 // Generate the PDF
-$pdf = new PDF();
-$pdf->AddPage();
-$pdf->drawForm($po_main, $po_items);
-$pdf->Output('I', 'PO_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $po_main['po_number']) . '.pdf');
-exit;
+try {
+    // Database connection is available globally from config.php
+    if (!isset($conn)) {
+        throw new Exception("Database connection not found.");
+    }
+    
+    // Fetch main PO data
+    $stmt = $conn->prepare("SELECT * FROM po_main WHERE id = :po_id");
+    $stmt->execute(['po_id' => $po_id]);
+    $po_main = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Handle case where PO is not found
+    if (!$po_main) {
+        die('PO not found.');
+    }
+
+    // Fetch PO items
+    $stmt = $conn->prepare("SELECT * FROM po_items WHERE po_id = :po_id ORDER BY id ASC");
+    $stmt->execute(['po_id' => $po_id]);
+    $po_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Create a new PDF instance and pass the connection
+    $pdf = new PDF($conn);
+    $pdf->AddPage();
+    $pdf->drawForm($po_main, $po_items);
+    $pdf->Output('I', 'PO_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $po_main['po_number']) . '.pdf');
+    exit;
+
+} catch (Exception $e) {
+    die("An error occurred: " . $e->getMessage());
+}
 ?>

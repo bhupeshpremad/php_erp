@@ -53,6 +53,7 @@ $so_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <!-- <th>Status</th> -->
                             <!-- <th>JCI Status</th> -->
                             <th>Item List</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -78,6 +79,9 @@ $so_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <!-- <td><span class="badge badge-<?php echo $so['jci_assigned'] ? 'warning' : 'success'; ?>"><?php echo $so['jci_status']; ?></span></td> -->
                             <td>
                                 <button class="btn btn-info btn-sm view-so-items-btn" data-so-id="<?php echo $so['id']; ?>">View Items</button>
+                            </td>
+                            <td>
+                                  <a href="generate_pdf.php?so_id=<?php echo $so['id']; ?>" class="btn btn-sm btn-success" target="_blank">PDF</a>
                             </td>
                         </tr>
                         <?php endforeach; ?>

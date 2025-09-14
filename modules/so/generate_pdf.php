@@ -96,13 +96,8 @@ try {
         <tr>
             <td style="width:50%;">
                 <div class="label">Invoice To</div>
-                PUREWOOD<br>
-                G-178, Boranada Industrial Park<br>
-                BORANADA Jodhpur 342012<br>
-                Rajasthan<br>
-                GSTIN/UIN : AAQFP4054K1ZQ<br>
-                State Name : RAJASTHAN, Code : 08<br>
-                E-Mail : info@purewood.in
+                ' . htmlspecialchars($so_main['client_name']) . '<br>
+                <!-- Add client address if available -->
             </td>
             <td style="width:50%;">
                 <table>
@@ -113,6 +108,14 @@ try {
                     <tr>
                         <td class="label">Dated</td>
                         <td>' . date('d-M-y', strtotime($so_main['created_at'])) . '</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Order Date</td>
+                        <td>' . (!empty($so_main['order_date']) ? date('d-M-y', strtotime($so_main['order_date'])) : '') . '</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Delivery Date</td>
+                        <td>' . (!empty($so_main['delivery_date']) ? date('d-M-y', strtotime($so_main['delivery_date'])) : '') . '</td>
                     </tr>
                     <tr>
                         <td class="label">Mode/Terms of Payment</td>
@@ -136,6 +139,7 @@ try {
         <tr>
             <td style="width:50%;">
                 <div class="label">Consignee (Ship to)</div>
+                ' . htmlspecialchars($so_main['client_name']) . '
             </td>
             <td style="width:50%;">
                 <table>
@@ -152,11 +156,27 @@ try {
         </tr>
     </table>';
 
+    // Terms of Delivery
+    $html .= '<table class="info-table">
+        <tr>
+            <td>
+                <div class="label">Terms of Delivery</div>
+            </td>
+        </tr>
+    </table>';
+
     // Supplier section
     $html .= '<table class="info-table">
         <tr>
             <td>
-                <div class="label">Customer (Bill to)</div>
+                <div class="label">Supplier (Bill from)</div>
+                PUREWOOD<br>
+                G-178, Boranada Industrial Park<br>
+                BORANADA Jodhpur 342012<br>
+                Rajasthan<br>
+                GSTIN/UIN : AAQFP4054K1ZQ<br>
+                State Name : RAJASTHAN, Code : 08<br>
+                E-Mail : info@purewood.in
             </td>
         </tr>
     </table>';
