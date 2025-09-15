@@ -36,7 +36,7 @@ if (!class_exists('AppConfig')) {
                 // Local configuration
                 return [
                     'host' => $_ENV['DB_HOST_LOCAL'] ?? 'localhost',
-                    'db' => $_ENV['DB_NAME_LOCAL'] ?? 'php_erp3_db_live',
+                    'db' => $_ENV['DB_NAME_LOCAL'] ?? 'u404997496_erp_u404997496',
                     'user' => $_ENV['DB_USER_LOCAL'] ?? 'root',
                     'pass' => $_ENV['DB_PASS_LOCAL'] ?? '',
                     'charset' => $_ENV['DB_CHARSET_LOCAL'] ?? 'utf8mb4',
