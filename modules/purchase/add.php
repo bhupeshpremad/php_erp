@@ -78,25 +78,13 @@ if ($purchase_id) {
 }
 
 try {
-    // Fetch JCIs with complete sell order numbers
-    if ($edit_mode && !empty($purchase_data['jci_number'])) {
-        $stmt = $conn->prepare("SELECT j.jci_number, j.po_id, j.bom_id, 
-                                      COALESCE(so.sell_order_number, TRIM(p.sell_order_number), 'N/A') as sell_order_number
-                               FROM jci_main j 
-                               LEFT JOIN po_main p ON j.po_id = p.id 
-                               LEFT JOIN sell_order so ON p.id = so.po_id 
-                               WHERE j.purchase_created = 0 OR j.jci_number = ? 
-                               ORDER BY j.jci_number DESC");
-        $stmt->execute([$purchase_data['jci_number']]);
-    } else {
-        $stmt = $conn->query("SELECT j.jci_number, j.po_id, j.bom_id, 
-                                    COALESCE(so.sell_order_number, TRIM(p.sell_order_number), 'N/A') as sell_order_number
-                             FROM jci_main j 
-                             LEFT JOIN po_main p ON j.po_id = p.id 
-                             LEFT JOIN sell_order so ON p.id = so.po_id 
-                             WHERE j.purchase_created = 0 
-                             ORDER BY j.jci_number DESC");
-    }
+    // Fetch JCIs with complete sell order numbers (show all JCIs for editing)
+    $stmt = $conn->query("SELECT j.jci_number, j.po_id, j.bom_id, j.purchase_created,
+                                COALESCE(so.sell_order_number, TRIM(p.sell_order_number), 'N/A') as sell_order_number
+                         FROM jci_main j 
+                         LEFT JOIN po_main p ON j.po_id = p.id 
+                         LEFT JOIN sell_order so ON p.id = so.po_id 
+                         ORDER BY j.jci_number DESC");
     $jci_numbers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     echo "Database query error: " . $e->getMessage();
@@ -135,6 +123,9 @@ try {
                                     data-son="<?php echo htmlspecialchars($jci['sell_order_number']); ?>"
                                     <?php echo (isset($purchase_data['jci_number']) && $purchase_data['jci_number'] == $jci['jci_number']) ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars($jci['jci_number']); ?>
+                                    <?php if ($jci['purchase_created'] == 1): ?>
+                                        (Purchase Created)
+                                    <?php endif; ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -161,6 +152,8 @@ try {
                 <button type="button" class="btn btn-primary" id="saveAllSelectedBtn">Save All Selected</button>
             </div>
 
+            <?php include 'supplier_allocation_widget.php'; ?>
+            
             <div class="card mt-4">
                 <div class="card-header">
                     <h6 class="m-0 font-weight-bold text-primary">BOM Details</h6>
@@ -177,6 +170,8 @@ try {
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+<!-- Font Awesome for action button icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-dymIcywE5hS7G4fQ3PZjPNSlN1G1rj4YxD0wQq9hhl0uuDB5vFZ8m1Yf3rU+Xn2Qf3z3YlC5UyGqYh0fQ3r3Xg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
 <!-- Select2 CSS -->
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -206,6 +201,7 @@ try {
 <!-- Purchase Editable JS -->
 <script src="js/purchase-editable.js?v=<?php echo time(); ?>"></script>
 <script src="js/bulk-operations.js?v=<?php echo time(); ?>"></script>
+<script src="js/multi-supplier.js?v=<?php echo time(); ?>"></script>
 
 
 <script>
@@ -572,6 +568,19 @@ function createBomTable(categoryName, data, savedItems, jobCardCount) {
                     }
                     return false;
                 });
+
+                // Collapse duplicates: same supplier + invoice + assigned qty for same product/job card
+                var seenKeys = new Set();
+                productSuppliers = productSuppliers.filter(function(pItem) {
+                    var key = [
+                        (pItem.supplier_name||'').trim(),
+                        (pItem.invoice_number||'').trim(),
+                        String(pItem.assigned_quantity||'0')
+                    ].join('|');
+                    if (seenKeys.has(key)) return false;
+                    seenKeys.add(key);
+                    return true;
+                });
             }
 
             if (existingItem) {
@@ -709,62 +718,108 @@ function renderBomTable(jobCards, bomItemsData, existingItems) {
         thead.append(colHeaderRow);
 
         bomItemsData.forEach(function(item, bomIndex) {
-            var tr = $('<tr></tr>');
-            tr.attr('data-bom-index', bomIndex);
+            // Find ALL suppliers for this product (multi-supplier support)
+            var productSuppliers = [];
 
-var existingItem = null;
-            if (existingItems && existingItems.length > 0) {
-                // Strict match by row_id + job card + product info
-                existingItem = existingItems.find(function(pItem) {
-                    return (pItem.job_card_number === jobCard) &&
-                           (parseInt(pItem.row_id || -1) === bomIndex) &&
-                           (pItem.product_type === item.product_type) &&
-                           (pItem.product_name === item.product_name);
-                });
-
-                // Legacy fallback (for old records without row_id): ensure no duplicate usage
-                if (!existingItem) {
-                    existingItem = existingItems.find(function(pItem) {
-                        var legacyRow = !pItem.row_id || parseInt(pItem.row_id) === 0;
-                        var notUsed = (!window.usedItemIds || !window.usedItemIds.has(String(pItem.id)));
-                        return legacyRow && notUsed &&
-                               (pItem.job_card_number === jobCard) &&
-                               (pItem.product_type === item.product_type) &&
-                               (pItem.product_name === item.product_name);
-                    });
-                }
-
-                if (existingItem) {
-                    if (!window.usedItemIds) { window.usedItemIds = new Set(); }
-                    window.usedItemIds.add(String(existingItem.id));
-                }
+            // Normalization helpers to align BOM vs saved item representations
+            function normalizeType(t) {
+                t = (t || '').toString().trim().toLowerCase();
+                if (t === 'glow type' || t === 'glow') return 'glow';
+                if (t === 'item name' || t === 'hardware') return 'hardware';
+                if (t === 'wood type' || t === 'wood') return 'wood';
+                return t;
             }
 
-            var supplierName = existingItem ? (existingItem.supplier_name || '').toString().replace(/"/g, '&quot;') : '';
-            var assignedQty = existingItem ? existingItem.assigned_quantity : '0';
-            var isChecked = existingItem ? true : false;
+            function num(val) { var n = parseFloat(val); return isNaN(n) ? 0 : n; }
+
+            function isSameWoodDimensions(a, b) {
+                // Compare with tolerance to avoid float mismatches
+                var tol = 0.01;
+                return Math.abs(num(a.length_ft) - num(b.length_ft)) < tol &&
+                       Math.abs(num(a.width_ft) - num(b.width_ft)) < tol &&
+                       Math.abs(num(a.thickness_inch) - num(b.thickness_inch)) < tol;
+            }
+
+            if (existingItems && existingItems.length > 0) {
+                // Filter saved items for this product/job card
+                productSuppliers = existingItems.filter(function(pItem) {
+                    // Require same job card
+                    if ((pItem.job_card_number || '').toString().trim() !== (jobCard || '').toString().trim()) {
+                        return false;
+                    }
+
+                    var savedType = normalizeType(pItem.product_type);
+                    var bomType = normalizeType(item.product_type);
+
+                    if (savedType !== bomType) {
+                        return false;
+                    }
+
+                    // Product name must match textually
+                    var savedName = (pItem.product_name || '').toString().trim();
+                    var bomName = (item.product_name || '').toString().trim();
+                    if (savedName !== bomName) {
+                        return false;
+                    }
+
+                    // For wood, also match dimensions to avoid conflating different rows
+                    if (bomType === 'wood') {
+                        return isSameWoodDimensions(pItem, item);
+                    }
+
+                    return true;
+                });
+            }
             
-            // Only show invoice/builty data if this is the exact matching item
+            // If no suppliers found, create one empty row
+            if (productSuppliers.length === 0) {
+                productSuppliers = [null]; // null represents empty row
+            }
+            
+            // Create a row for each supplier
+            productSuppliers.forEach(function(existingItem, supplierIndex) {
+
+                var tr = $('<tr></tr>');
+                // Prefer existing item's unique row_id (>0). If absent, fallback to existing item ID. Else use BOM index.
+                var rowKey = bomIndex;
+                if (existingItem) {
+                    var eiRowId = parseInt(existingItem.row_id || 0);
+                    var eiId = parseInt(existingItem.id || 0);
+                    if (!isNaN(eiRowId) && eiRowId > 0) {
+                        rowKey = eiRowId;
+                    } else if (!isNaN(eiId) && eiId > 0) {
+                        rowKey = eiId;
+                    }
+                }
+                if (isNaN(parseInt(rowKey)) || parseInt(rowKey) === 0) {
+                    // Ensure non-zero unique key
+                    var fallbackId = existingItem && existingItem.id ? parseInt(existingItem.id) : null;
+                    rowKey = (!isNaN(fallbackId) && fallbackId > 0) ? fallbackId : (bomIndex || (Math.floor(Math.random()*1e6)));
+                }
+                tr.attr('data-bom-index', rowKey);
+                if (existingItem && existingItem.id) {
+                    tr.attr('data-item-id', parseInt(existingItem.id));
+                }
+                
+                // Mark additional supplier rows
+                if (supplierIndex > 0) {
+                    tr.addClass('multi-supplier-row');
+                }
+                
+                var supplierName = existingItem ? (existingItem.supplier_name || '').toString().replace(/"/g, '&quot;') : '';
+                var assignedQty = existingItem ? existingItem.assigned_quantity : '0';
+                var isChecked = existingItem ? true : false;
+            
+            // Always bind invoice/builty fields for the matched existing item
             var invoiceNumber = '';
             var builtyNumber = '';
             var invoiceImage = '';
             var builtyImage = '';
-            
             if (existingItem) {
-                // Check if this is a unique match (not shared invoice/builty)
-                var sameInvoiceItems = existingItems.filter(function(pItem) {
-                    return pItem.invoice_number === existingItem.invoice_number && 
-                           pItem.invoice_number !== '' && 
-                           pItem.job_card_number === jobCard;
-                });
-                
-                // Only show invoice/builty if this is the first occurrence or unique
-                if (sameInvoiceItems.length === 1 || sameInvoiceItems[0].id === existingItem.id) {
-                    invoiceNumber = (existingItem.invoice_number || '').toString().trim();
-                    builtyNumber = (existingItem.builty_number || '').toString().trim();
-                    invoiceImage = (existingItem.invoice_image || '').toString().trim();
-                    builtyImage = (existingItem.builty_image || '').toString().trim();
-                }
+                invoiceNumber = (existingItem.invoice_number || '').toString().trim();
+                builtyNumber = (existingItem.builty_number || '').toString().trim();
+                invoiceImage = (existingItem.invoice_image || '').toString().trim();
+                builtyImage = (existingItem.builty_image || '').toString().trim();
             }
             
             var isApproved = existingItem && invoiceNumber && invoiceImage ? true : false;
@@ -772,8 +827,9 @@ var existingItem = null;
 
             var inputReadonly = (isApproved && !isSuperAdmin) ? 'readonly' : '';
             var inputDisabled = (isApproved && !isSuperAdmin) ? 'disabled' : '';
-            var fileInputVisibility = (invoiceImage && !isSuperAdmin) ? 'style="display:none;"' : '';
-            var builtyFileInputVisibility = (builtyImage && !isSuperAdmin) ? 'style="display:none;"' : '';
+            // Hide file inputs whenever an image exists (user can click thumbnail to re-upload)
+            var fileInputVisibility = (invoiceImage) ? 'style="display:none;"' : '';
+            var builtyFileInputVisibility = (builtyImage) ? 'style="display:none;"' : '';
 
             // Add hidden input for existing item ID
             var hiddenItemId = existingItem ? '<input type="hidden" class="existing-item-id" value="' + existingItem.id + '">' : '<input type="hidden" class="existing-item-id" value="">';
@@ -784,9 +840,16 @@ var existingItem = null;
             tr.append('<td><input type="text" class="form-control form-control-sm supplierNameInput" value="' + (supplierName || '').toString().replace(/"/g, '&quot;') + '" ' + inputReadonly + '></td>'); // Supplier Name
             tr.append('<td><input type="text" class="form-control form-control-sm productTypeInput" value="' + item.product_type + '" readonly></td>'); // Product Type
             tr.append('<td><input type="text" class="form-control form-control-sm productNameInput" value="' + item.product_name + '" readonly></td>'); // Product Name
+            // If WOOD, embed hidden dimension fields so we can save and match precisely later
+            if (item.product_type === 'Wood') {
+                var $lastTd = tr.children().last();
+                $lastTd.append('<input type="hidden" class="lengthFtInput" value="' + (item.length_ft || 0) + '">');
+                $lastTd.append('<input type="hidden" class="widthFtInput" value="' + (item.width_ft || 0) + '">');
+                $lastTd.append('<input type="hidden" class="thicknessInchInput" value="' + (item.thickness_inch || 0) + '">');
+            }
             tr.append('<td><input type="number" class="form-control form-control-sm bomQuantityInput" value="' + item.quantity + '" readonly></td>'); // BOM Quantity
             tr.append('<td><input type="number" class="form-control form-control-sm bomPriceInput" value="' + item.price + '" readonly></td>'); // BOM Price
-            tr.append('<td><input type="number" min="0" max="' + item.quantity + '" step="0.001" class="form-control form-control-sm assignQuantityInput" value="' + assignedQty + '" ' + inputReadonly + '></td>'); // Assign Quantity
+            tr.append('<td><input type="number" min="0" max="' + item.quantity + '" step="0.001" class="form-control form-control-sm assignQuantityInput" value="' + assignedQty + '" ' + inputReadonly + ' data-bom-qty="' + item.quantity + '" data-product="' + item.product_name + '"></td>'); // Assign Quantity
             tr.append('<td><input type="text" class="form-control form-control-sm invoiceNumberInput" value="' + invoiceNumber + '" ' + inputReadonly + '></td>'); // Invoice No.
             
             var baseUrl = window.location.origin + window.location.pathname.replace('/modules/purchase/add.php', '') + '/';
@@ -812,24 +875,26 @@ var existingItem = null;
                 tr.append('<td><span class="badge badge-warning">Pending</span></td>'); // Status
             }
             
-            // Action column with Save and Delete buttons
-            var actionTd = '<td>';
-            actionTd += '<button type="button" class="btn btn-primary btn-sm saveRowBtn" ' + inputDisabled + '>Save</button>';
-            
-            // Add delete button for superadmin on saved rows, include row_id for precise deletion
-            
-var isSuperAdmin = <?php echo json_encode($is_superadmin); ?>;
+            // Action column with Save, Delete, and Multi-Supplier buttons (icons, one line)
+            var actionTd = '<td><div class="action-buttons d-flex align-items-center gap-1">';
+            actionTd += '<button type="button" class="btn btn-primary btn-sm saveRowBtn" ' + inputDisabled + ' title="Save"><i class="fas fa-save"></i></button>';
+
+            var isSuperAdmin = <?php echo json_encode($is_superadmin); ?>;
             if (isSuperAdmin && supplierName && supplierName.trim() !== '') {
                 var safeSupplier = supplierName.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
                 var safeProduct = item.product_name.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
                 var safeJobCard = jobCard.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
-                actionTd += ' <button type="button" class="btn btn-danger btn-sm deleteRowBtn" data-supplier="' + safeSupplier + '" data-product="' + safeProduct + '" data-job-card="' + safeJobCard + '" data-row-id="' + bomIndex + '" title="Delete this row">Delete</button>';
+                actionTd += ' <button type="button" class="btn btn-danger btn-sm deleteRowBtn" data-supplier="' + safeSupplier + '" data-product="' + safeProduct + '" data-job-card="' + safeJobCard + '" data-row-id="' + rowKey + '" title="Delete"><i class="fas fa-trash"></i></button>';
             }
-            
-            actionTd += '</td>';
+            actionTd += '</div></td>';
             tr.append(actionTd);
+            
+                // Mark this as the original row for multi-supplier tracking
+                tr.attr('data-product-name', item.product_name);
+                tr.attr('data-bom-quantity', item.quantity);
 
-            tbody.append(tr);
+                tbody.append(tr);
+            });
         });
 
         table.append(thead);
@@ -864,6 +929,36 @@ var isSuperAdmin = <?php echo json_encode($is_superadmin); ?>;
         var isSuperAdmin = <?php echo json_encode($is_superadmin); ?>;
         if (isSuperAdmin) {
             $(this).siblings('.builtyImageInput').trigger('click');
+        }
+    });
+    
+    // Initialize multi-supplier buttons after table is rendered
+    if (window.multiSupplierManager) {
+        $('#bomTableContainer table').each(function() {
+            window.multiSupplierManager.updateSupplierButtons($(this));
+        });
+        window.multiSupplierManager.updateRemainingQuantity();
+    }
+    
+    // Add real-time quantity validation
+    $('#bomTableContainer').on('input', '.assignQuantityInput', function() {
+        const $input = $(this);
+        const productName = $input.data('product');
+        const bomQty = parseFloat($input.data('bom-qty')) || 0;
+        const $table = $input.closest('table');
+        
+        // Calculate total assigned for this product
+        let totalAssigned = 0;
+        $table.find('.assignQuantityInput[data-product="' + productName + '"]').each(function() {
+            totalAssigned += parseFloat($(this).val()) || 0;
+        });
+        
+        // Validate and correct if needed
+        if (totalAssigned > bomQty + 0.001) {
+            const currentVal = parseFloat($input.val()) || 0;
+            const maxAllowed = bomQty - (totalAssigned - currentVal);
+            $input.val(Math.max(0, maxAllowed.toFixed(3)));
+            toastr.warning('Quantity adjusted. Total cannot exceed BOM quantity (' + bomQty + ') for ' + productName);
         }
     });
     
@@ -971,6 +1066,16 @@ function saveItems(rowToSave) {
     var bom_number = $('#bom_number_display').val();
     var isSuperAdmin = <?php echo json_encode($is_superadmin); ?>;
 
+    // Validate required fields
+    if (!jci_number) {
+        toastr.error('Please select a JCI number first.');
+        return;
+    }
+    if (!po_number) {
+        toastr.error('PO number is required.');
+        return;
+    }
+
     var items_to_save = [];
     var validationFailed = false;
 
@@ -1075,11 +1180,26 @@ function saveItems(rowToSave) {
                 return true;
             }
 
+            // Multi-supplier quantity validation
             var bomQuantity = parseFloat(row.find('.bomQuantityInput').val()) || 0;
             var assignedQtyFloat = parseFloat(assigned_quantity) || 0;
-
-            if (assignedQtyFloat > bomQuantity + 0.001) {
-                toastr.error('Assigned quantity (' + assignedQtyFloat + ') cannot exceed BOM quantity (' + bomQuantity + ') for ' + product_name);
+            var currentTable = row.closest('table');
+            var totalAssignedForProduct = 0;
+            
+            // Calculate total assigned quantity for this product across all suppliers
+            currentTable.find('tbody tr').each(function() {
+                var otherRow = $(this);
+                var otherProductName = otherRow.find('.productNameInput').val();
+                var otherJobCard = currentTable.find('thead th').first().text().replace('Job Card: ', '').trim();
+                
+                if (otherProductName === product_name && otherJobCard === job_card_number_from_table) {
+                    var otherQty = parseFloat(otherRow.find('.assignQuantityInput').val()) || 0;
+                    totalAssignedForProduct += otherQty;
+                }
+            });
+            
+            if (totalAssignedForProduct > bomQuantity + 0.001) {
+                toastr.error('Total assigned quantity (' + totalAssignedForProduct + ') across all suppliers exceeds BOM quantity (' + bomQuantity + ') for ' + product_name);
                 row.find('.assignQuantityInput').focus();
                 validationFailed = true;
                 return false;
@@ -1102,6 +1222,13 @@ function saveItems(rowToSave) {
             // Get BOM index from data attribute
             var bomIndex = row.data('bom-index') !== undefined ? row.data('bom-index') : rowIndex;
 
+            var length_ft = 0, width_ft = 0, thickness_inch = 0;
+            if (product_type === 'Wood') {
+                length_ft = parseFloat(row.find('.lengthFtInput').val() || 0) || 0;
+                width_ft = parseFloat(row.find('.widthFtInput').val() || 0) || 0;
+                thickness_inch = parseFloat(row.find('.thicknessInchInput').val() || 0) || 0;
+            }
+
             items_to_save.push({
                 rowIndex: rowIndex,
                 row_id: bomIndex,
@@ -1116,7 +1243,11 @@ function saveItems(rowToSave) {
                 invoice_number: invoice_number,
                 builty_number: builty_number,
                 existing_invoice_image: existing_invoice_image,
-                existing_builty_image: existing_builty_image
+                existing_builty_image: existing_builty_image,
+                // Include wood dimensions when applicable so backend saves them
+                length_ft: length_ft,
+                width_ft: width_ft,
+                thickness_inch: thickness_inch
             });
         });
         if (validationFailed) { return false; }
@@ -1168,27 +1299,34 @@ function saveItems(rowToSave) {
         url: 'ajax_save_individual_row.php',
         method: 'POST',
         data: formData,
-        processData: false, // Important: tell jQuery not to process the data
-        contentType: false, // Important: tell jQuery not to set contentType
+        processData: false,
+        contentType: false,
         dataType: 'json',
+        beforeSend: function() {
+            // Show loading state
+            if (rowToSave) {
+                rowToSave.find('.saveRowBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+            }
+        },
         success: function(response) {
+            console.log('Save response:', response);
             if (response.success) {
-                toastr.success(response.message);
-                // Reload only if not saving a single row, or if the response indicates a full reload is needed
-                if (!rowToSave) {
-                    $('#jci_number_search').trigger('change'); // Reload all BOM tables
-                } else {
-                    // For single row save, update just the row's status/UI without full reload
-                    // This would involve updating the badge, disabling inputs etc. which is more complex
-                    // For simplicity, we can still trigger a full reload for single saves as well for now
-                    $('#jci_number_search').trigger('change');
-                }
+                toastr.success(response.message || 'Data saved successfully');
+                $('#jci_number_search').trigger('change');
             } else {
                 toastr.error(response.error || 'Unknown error occurred');
+                console.error('Save error:', response);
             }
         },
         error: function(xhr, status, error) {
-            toastr.error('AJAX error: ' + error);
+            console.error('AJAX error:', xhr.responseText);
+            toastr.error('AJAX error: ' + error + '. Check console for details.');
+        },
+        complete: function() {
+            // Reset loading state
+            if (rowToSave) {
+                rowToSave.find('.saveRowBtn').prop('disabled', false).html('<i class="fas fa-save"></i>');
+            }
         }
     });
 }

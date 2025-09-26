@@ -63,10 +63,26 @@ try {
     $stmtJci->execute([$jci_number]);
     $jobcards = $stmtJci->fetchAll(PDO::FETCH_ASSOC);
 
-    // Totals
+    // Get SO (Sales Order) total amount from po_items
+    $soTotal = 0;
+    if (!empty($payment['po_number'])) {
+        $stmtSo = $conn->prepare("SELECT SUM(total_amount) as so_total FROM po_items pi 
+            JOIN po_main pm ON pm.id = pi.po_id 
+            WHERE pm.po_number = ?");
+        $stmtSo->execute([$payment['po_number']]);
+        $soResult = $stmtSo->fetch(PDO::FETCH_ASSOC);
+        $soTotal = (float)($soResult['so_total'] ?? 0);
+    }
+
+    // Calculate totals
     $grandSupplier = 0; foreach ($items as $it) { $grandSupplier += (float)($it['amount'] ?? 0); }
     $grandJc = 0; foreach ($jobcards as $jc) { $grandJc += (float)($jc['total_amount'] ?? 0); }
     $grandTotal = $grandSupplier + $grandJc;
+
+    // Calculate Profit/Loss
+    $profitLoss = $soTotal - $grandTotal;
+    $profitLossPercentage = $soTotal > 0 ? ($profitLoss / $soTotal) * 100 : 0;
+    $isProfitable = $profitLoss >= 0;
 
     // Build HTML for PDF
     $html = '<h2 style="margin:0;">Payment Report</h2>';
@@ -128,13 +144,40 @@ try {
     }
     $html .= '</tbody></table>';
 
-    // Totals
-    $html .= '<h3 style="margin:15px 0 5px 0;">Grand Total</h3>';
+    // Totals and Profit/Loss Analysis
+    $html .= '<h3 style="margin:15px 0 5px 0;">Financial Summary</h3>';
     $html .= '<table border="1" cellpadding="6" cellspacing="0" width="100%">'
+        . '<tr><td><strong>SO (Sales Order) Total</strong></td><td style="text-align:right;">' . number_format($soTotal, 2) . '</td></tr>'
         . '<tr><td><strong>Suppliers Total</strong></td><td style="text-align:right;">' . number_format($grandSupplier, 2) . '</td></tr>'
         . '<tr><td><strong>Job Cards Total</strong></td><td style="text-align:right;">' . number_format($grandJc, 2) . '</td></tr>'
-        . '<tr><td><strong>Grand Total</strong></td><td style="text-align:right;">' . number_format($grandTotal, 2) . '</td></tr>'
+        . '<tr><td><strong>Total Expenses</strong></td><td style="text-align:right;">' . number_format($grandTotal, 2) . '</td></tr>'
+        . '<tr style="background-color:' . ($isProfitable ? '#d4edda' : '#f8d7da') . ';">'
+        . '<td><strong>' . ($isProfitable ? 'Profit' : 'Loss') . '</strong></td>'
+        . '<td style="text-align:right; color:' . ($isProfitable ? 'green' : 'red') . ';"><strong>' 
+        . ($isProfitable ? '+' : '') . number_format($profitLoss, 2) . '</strong></td></tr>'
+        . '<tr><td><strong>Profit/Loss Percentage</strong></td>'
+        . '<td style="text-align:right; color:' . ($isProfitable ? 'green' : 'red') . ';"><strong>' 
+        . ($isProfitable ? '+' : '') . number_format($profitLossPercentage, 2) . '%</strong></td></tr>'
         . '</table>';
+
+    // Add profit/loss analysis section
+    $html .= '<h3 style="margin:15px 0 5px 0;">Profit/Loss Analysis</h3>';
+    $html .= '<div style="padding:10px; border:1px solid #ccc; background-color:' . ($isProfitable ? '#d4edda' : '#f8d7da') . ';">';
+    if ($isProfitable) {
+        $html .= '<p><strong>✓ PROFITABLE PROJECT</strong></p>';
+        $html .= '<p>This project generated a profit of <strong>' . number_format($profitLoss, 2) . '</strong> (' . number_format($profitLossPercentage, 2) . '% margin).</p>';
+    } else {
+        $html .= '<p><strong>⚠ LOSS-MAKING PROJECT</strong></p>';
+        $html .= '<p>This project incurred a loss of <strong>' . number_format(abs($profitLoss), 2) . '</strong> (' . number_format(abs($profitLossPercentage), 2) . '% loss).</p>';
+    }
+    $html .= '<p><strong>Breakdown:</strong></p>';
+    $html .= '<ul>';
+    $html .= '<li>Revenue (SO): ' . number_format($soTotal, 2) . '</li>';
+    $html .= '<li>Supplier Costs: ' . number_format($grandSupplier, 2) . '</li>';
+    $html .= '<li>Job Card Costs: ' . number_format($grandJc, 2) . '</li>';
+    $html .= '<li>Total Costs: ' . number_format($grandTotal, 2) . '</li>';
+    $html .= '</ul>';
+    $html .= '</div>';
 
     // Create PDF
     $mpdf = new Mpdf([
@@ -147,17 +190,17 @@ try {
         'margin_bottom' => 15
     ]);
     
-    $mpdf->SetTitle('Payment Report - ' . $payment_id);
+    $mpdf->SetTitle('Payment Report - ' . $jci_number);
     $mpdf->WriteHTML($html);
     
     // Set headers for download
     header('Content-Type: application/pdf');
-    header('Content-Disposition: attachment; filename="payment_report_' . $payment_id . '.pdf"');
+    header('Content-Disposition: attachment; filename="' . $jci_number . '_payment_report.pdf"');
     header('Cache-Control: no-cache, no-store, must-revalidate');
     header('Pragma: no-cache');
     header('Expires: 0');
     
-    $mpdf->Output('payment_report_' . $payment_id . '.pdf', 'D');
+    $mpdf->Output($jci_number . '_payment_report.pdf', 'D');
     exit;
 
 } catch (Exception $e) {
