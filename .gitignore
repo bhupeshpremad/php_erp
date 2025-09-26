@@ -54,6 +54,19 @@ tmp/
 *temp*.*
 *backup*.*
 
+# Ignore specific test/debug files in modules
+modules/*/test_*.php
+modules/*/debug_*.php
+modules/*/fix_*.php
+modules/*/*test*.php
+modules/*/*debug*.php
+modules/*/*fix*.php
+
+# Ignore documentation files except main README
+*.md
+!README.md
+!DEPLOYMENT_GUIDE.md
+
 # Ignore specific debug/test files
 verify_structure.php
 get_details.php
@@ -61,7 +74,6 @@ check_*.php
 fix_*.php
 test_*.php
 debug_*.php
-setup_*.php
 run_*.php
 clean*.php
 final_*.php
@@ -71,6 +83,12 @@ direct_*.php
 complete_*.php
 audit_*.php
 clear_*.php
+
+# Keep deployment setup files but ignore test setup files
+!setup_complete.php
+setup_*.php
+newsetup.php
+setup.php
 add_search_functionality.php__
 cleanup_database.php__
 debug_purchase.php__
